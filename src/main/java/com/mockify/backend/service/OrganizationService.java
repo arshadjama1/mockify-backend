@@ -2,6 +2,7 @@ package com.mockify.backend.service;
 
 import com.mockify.backend.dto.request.organization.CreateOrganizationRequest;
 import com.mockify.backend.dto.request.organization.UpdateOrganizationRequest;
+import com.mockify.backend.dto.response.organization.OrganizationDetailResponse;
 import com.mockify.backend.dto.response.organization.OrganizationResponse;
 
 import java.util.List;
@@ -15,6 +16,9 @@ public interface OrganizationService {
 
     // Fetch organization details by ID
     OrganizationResponse getOrganizationById(Long orgId);
+
+    // Get organization details with its owner and projects.
+    OrganizationDetailResponse getOrganizationDetail(Long orgId, Long userId);
 
     // Get all organizations owned by current user
     List<OrganizationResponse> getMyOrganizations(Long userId);
