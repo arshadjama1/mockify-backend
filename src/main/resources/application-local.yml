@@ -12,8 +12,8 @@ spring:
       enabled: true
 
 jwt:
-  secret: ${JWT_SECRET:local-super-secret-key-1234567890}
+  secret: ${JWT_SECRET:af84c6a92b8d5f4e1c7d92a6e6a1c56a4e9f45bba782cd51e2e1f67a9c34b12f}
   access:
-    expiration: 300000
+    expiration: ${JWT_ACCESS_EXPIRATION:3600000}
   refresh:
-    expiration: 3600000
+    expiration: ${JWT_REFRESH_EXPIRATION:604800000}
