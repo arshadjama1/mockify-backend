@@ -17,7 +17,7 @@ public interface MockRecordMapper {
     List<MockRecordResponse> toResponseList(List<MockRecord> records);
 
     // Create Request -> Entity
-    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "id", ignore = true) //
     @Mapping(target = "mockSchema", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "expiresAt", ignore = true)

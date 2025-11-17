@@ -5,6 +5,7 @@ import com.mockify.backend.dto.request.record.UpdateMockRecordRequest;
 import com.mockify.backend.dto.response.record.MockRecordResponse;
 import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.exception.ResourceNotFoundException;
+import com.mockify.backend.exception.ForbiddenException;
 import com.mockify.backend.mapper.MockRecordMapper;
 import com.mockify.backend.model.MockRecord;
 import com.mockify.backend.model.MockSchema;
@@ -12,6 +13,7 @@ import com.mockify.backend.repository.MockRecordRepository;
 import com.mockify.backend.repository.MockSchemaRepository;
 import com.mockify.backend.service.MockRecordService;
 import com.mockify.backend.service.MockValidatorService;
+import com.mockify.backend.service.AccessControlService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,13 +32,12 @@ public class MockRecordServiceImpl implements MockRecordService {
     private final MockSchemaRepository mockSchemaRepository;
     private final MockRecordMapper mockRecordMapper;
     private final MockValidatorService mockValidatorService;
+    private final AccessControlService accessControlService;
 
-    // CREATE single record
     @Override
     @Transactional
-    public MockRecordResponse createRecord(CreateMockRecordRequest request) {
-
-        log.info("Creating new mock record for schemaId={}",
+    public MockRecordResponse createRecord(Long userId, CreateMockRecordRequest request) {
+        log.info("User {} creating new mock record for schemaId={}", userId,
                 request != null ? request.getSchemaId() : null);
 
         if (request == null) {
@@ -49,7 +50,8 @@ public class MockRecordServiceImpl implements MockRecordService {
         MockSchema schema = mockSchemaRepository.findById(request.getSchemaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Schema not found"));
 
-        log.debug("Schema found: schemaId={}, validating record data...", schema.getId());
+        // check organization ownership via schema -> organization
+        accessControlService.checkOrganizationAccess(userId, schema.getOrganization(), "Record");
 
         // VALIDATE DATA
         Map<String, Object> schemaJson = schema.getSchemaJson();
@@ -61,101 +63,97 @@ public class MockRecordServiceImpl implements MockRecordService {
         record.setExpiresAt(LocalDateTime.now().plusDays(7));
 
         mockRecordRepository.save(record);
-
-        log.info("Record created successfully: recordId={}", record.getId());
-
         return mockRecordMapper.toResponse(record);
     }
 
-    // CREATE multiple records (bulk)
     @Override
     @Transactional
-    public List<MockRecordResponse> createRecordsBulk(List<CreateMockRecordRequest> requests) {
-        log.info("Bulk create requested: {} records", requests.size());
+    public List<MockRecordResponse> createRecordsBulk(Long userId, List<CreateMockRecordRequest> requests) {
+        log.info("Bulk create requested by userId={} count={}", userId, requests == null ? 0 : requests.size());
         return requests.stream()
-                .map(this::createRecord)
+                .map(req -> createRecord(userId, req))
                 .toList();
     }
 
-    // GET record by ID
     @Override
     @Transactional(readOnly = true)
-    public MockRecordResponse getRecordById(Long recordId) {
-
-        log.debug("Fetching record by id={}", recordId);
+    public MockRecordResponse getRecordById(Long userId, Long recordId) {
+        log.debug("Fetching record for userId={}, recordId={}", userId, recordId);
 
         MockRecord record = mockRecordRepository.findById(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Record not found"));
 
+        // AUTHORIZE using schema -> organization
+        if (record.getMockSchema() == null) {
+            throw new ResourceNotFoundException("Associated schema not found for record");
+        }
+        accessControlService.checkOrganizationAccess(userId, record.getMockSchema().getOrganization(), "Record");
+
         return mockRecordMapper.toResponse(record);
     }
 
-    // GET all records under a schema
     @Override
     @Transactional(readOnly = true)
-    public List<MockRecordResponse> getRecordsBySchemaId(Long schemaId) {
+    public List<MockRecordResponse> getRecordsBySchemaId(Long userId, Long schemaId) {
+        log.debug("Fetching records for userId={}, schemaId={}", userId, schemaId);
 
-        log.debug("Fetching all records for schemaId={}", schemaId);
+        MockSchema schema = mockSchemaRepository.findById(schemaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Schema not found"));
+
+        accessControlService.checkOrganizationAccess(userId, schema.getOrganization(), "Record");
 
         List<MockRecord> records = mockRecordRepository.findByMockSchema_Id(schemaId);
         return mockRecordMapper.toResponseList(records);
     }
 
-    // UPDATE record
     @Override
     @Transactional
-    public MockRecordResponse updateRecord(Long recordId, UpdateMockRecordRequest request) {
-
-        log.info("Updating record recordId={}", recordId);
+    public MockRecordResponse updateRecord(Long userId, Long recordId, UpdateMockRecordRequest request) {
+        log.info("Updating record userId={}, recordId={}", userId, recordId);
 
         MockRecord record = mockRecordRepository.findById(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Record not found"));
 
-        MockSchema schema = record.getMockSchema();
+        if (record.getMockSchema() == null) {
+            throw new ResourceNotFoundException("Associated schema not found for record");
+        }
+        accessControlService.checkOrganizationAccess(userId, record.getMockSchema().getOrganization(), "Record");
 
         if (request.getData() != null) {
-            log.debug("Validating update data for recordId={}", recordId);
-            Map<String, Object> schemaJson = schema.getSchemaJson();
-            mockValidatorService.validateRecordAgainstSchema(schemaJson, request.getData());
+            mockValidatorService.validateRecordAgainstSchema(record.getMockSchema().getSchemaJson(), request.getData());
         }
 
         mockRecordMapper.updateEntityFromRequest(request, record);
         mockRecordRepository.save(record);
 
-        log.info("Record updated successfully recordId={}", recordId);
-
         return mockRecordMapper.toResponse(record);
     }
 
-    // DELETE record by ID
     @Override
     @Transactional
-    public void deleteRecord(Long recordId) {
+    public void deleteRecord(Long userId, Long recordId) {
+        log.warn("Deleting record userId={}, recordId={}", userId, recordId);
 
-        log.warn("Deleting record recordId={}", recordId);
+        MockRecord record = mockRecordRepository.findById(recordId)
+                .orElseThrow(() -> new ResourceNotFoundException("Record not found"));
 
-        if (!mockRecordRepository.existsById(recordId)) {
-            throw new ResourceNotFoundException("Record not found");
+        if (record.getMockSchema() == null) {
+            throw new ResourceNotFoundException("Associated schema not found for record");
         }
+        accessControlService.checkOrganizationAccess(userId, record.getMockSchema().getOrganization(), "Record");
 
-        mockRecordRepository.deleteById(recordId);
-
-        log.info("Record deleted recordId={}", recordId);
+        mockRecordRepository.delete(record);
     }
 
-    // DELETE expired records
     @Override
     @Transactional
     public void deleteExpiredRecords() {
         log.info("Deleting expired records...");
-
         List<MockRecord> expired = mockRecordRepository.findByExpiresAtBefore(LocalDateTime.now());
         mockRecordRepository.deleteAll(expired);
-
         log.info("Expired records deleted count={}", expired.size());
     }
 
-    // COUNT total records
     @Override
     @Transactional(readOnly = true)
     public long countRecords() {
