@@ -9,27 +9,17 @@ import java.util.Optional;
 
 public interface MockRecordService {
 
-    // Create new record under schema
-    MockRecordResponse createRecord(CreateMockRecordRequest request);
+    MockRecordResponse createRecord(Long userId, CreateMockRecordRequest request);
 
-    // Create multiple records in one call (bulk)
-    List<MockRecordResponse> createRecordsBulk(List<CreateMockRecordRequest> requests);
+    List<MockRecordResponse> createRecordsBulk(Long userId, List<CreateMockRecordRequest> requests);
 
-    // Get record by ID
-    MockRecordResponse getRecordById(Long recordId);
+    MockRecordResponse getRecordById(Long userId, Long recordId);
 
-    // Get all records under a schema
-    List<MockRecordResponse> getRecordsBySchemaId(Long schemaId);
+    List<MockRecordResponse> getRecordsBySchemaId(Long userId, Long schemaId);
 
-    // Update record data
-    MockRecordResponse updateRecord(Long recordId, UpdateMockRecordRequest request);
+    MockRecordResponse updateRecord(Long userId, Long recordId, UpdateMockRecordRequest request);
 
-    // Delete record by ID
-    void deleteRecord(Long recordId);
+    void deleteRecord(Long userId, Long recordId);
 
-    // Delete expired records periodically
-    void deleteExpiredRecords();
-
-    // Count total records
     long countRecords();
 }
