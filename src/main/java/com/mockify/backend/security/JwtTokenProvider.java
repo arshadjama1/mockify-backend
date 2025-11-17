@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.UUID;
 
@@ -27,11 +28,28 @@ public class JwtTokenProvider {
     @Value("${jwt.refresh.expiration}")
     private long refreshTokenExpiration;
 
-    // Generate signing key from secret
+    // Accept base64 or plain secret
     private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
-        return Keys.hmacShaKeyFor(keyBytes);
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+
+            if (keyBytes.length < 32) {
+                log.warn("Base64 key is <256 bits — weak secret.");
+            }
+            return Keys.hmacShaKeyFor(keyBytes);
+
+        } catch (Exception e) {
+            byte[] rawBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+
+            if (rawBytes.length < 32) {
+                log.warn("Raw secret is <256 bits — weak secret.");
+            }
+
+            log.warn("Using raw UTF-8 bytes as secret. Prefer Base64 encoded secret.");
+            return Keys.hmacShaKeyFor(rawBytes);
+        }
     }
+
 
     // Generate JWT access token for a user
     public String generateAccessToken(Long userId) {
