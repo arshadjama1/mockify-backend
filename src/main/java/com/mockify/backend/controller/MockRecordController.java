@@ -24,7 +24,7 @@ public class MockRecordController {
     private final MockRecordService mockRecordService;
 
     // Create a new mock record
-    @PostMapping("/records")
+    @PostMapping("/schemas/{schemaId}/records")
     public ResponseEntity<MockRecordResponse> createRecord(
             @Valid @RequestBody CreateMockRecordRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -37,7 +37,7 @@ public class MockRecordController {
     }
 
     // Create multiple records in bulk
-    @PostMapping("/records/bulk")
+    @PostMapping("/schemas/{schemaId}/records/bulk")
     public ResponseEntity<List<MockRecordResponse>> createRecordsBulk(
             @Valid @RequestBody List<CreateMockRecordRequest> requests,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -100,13 +100,5 @@ public class MockRecordController {
 
         mockRecordService.deleteRecord(userId, recordId);
         return ResponseEntity.noContent().build();
-    }
-
-    // Count total record
-    @GetMapping("/records/count")
-    public ResponseEntity<Long> countRecords() {
-        long count = mockRecordService.countRecords();
-        log.info("Total records in system: {}", count);
-        return ResponseEntity.ok(count);
     }
 }
