@@ -49,8 +49,4 @@ public class MockSchema {
             createdAt = LocalDateTime.now();
         }
     }
-
-    public Organization getOrganization() {
-        return project != null ? project.getOrganization() : null;
-    }
 }
