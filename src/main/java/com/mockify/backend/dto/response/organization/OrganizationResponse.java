@@ -12,5 +12,7 @@ public class OrganizationResponse {
     private Long id;
     private String name;
     private Long ownerId;
+    private String ownerName;
     private LocalDateTime createdAt;
+    private int projectCount;
 }

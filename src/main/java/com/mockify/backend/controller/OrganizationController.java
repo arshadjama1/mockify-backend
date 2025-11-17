@@ -2,6 +2,7 @@ package com.mockify.backend.controller;
 
 import com.mockify.backend.dto.request.organization.CreateOrganizationRequest;
 import com.mockify.backend.dto.request.organization.UpdateOrganizationRequest;
+import com.mockify.backend.dto.response.organization.OrganizationDetailResponse;
 import com.mockify.backend.dto.response.organization.OrganizationResponse;
 import com.mockify.backend.service.OrganizationService;
 import jakarta.validation.Valid;
@@ -38,8 +39,13 @@ public class OrganizationController {
 
     // Get details of a specific organization
     @GetMapping("/{orgId}")
-    public ResponseEntity<OrganizationResponse> getOrganizationById(@PathVariable Long orgId) {
-        return ResponseEntity.ok(organizationService.getOrganizationById(orgId));
+    public ResponseEntity<OrganizationDetailResponse> getOrganization(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long orgId) {
+        Long userId = Long.parseLong(userDetails.getUsername());
+        log.debug("Fetching organization: {} for user: {}", orgId, userId);
+        OrganizationDetailResponse org = organizationService.getOrganizationDetail(orgId, userId);
+        return ResponseEntity.ok(org);
     }
 
     // Get all organizations for current user

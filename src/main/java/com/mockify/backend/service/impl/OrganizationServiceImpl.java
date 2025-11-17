@@ -2,9 +2,11 @@ package com.mockify.backend.service.impl;
 
 import com.mockify.backend.dto.request.organization.CreateOrganizationRequest;
 import com.mockify.backend.dto.request.organization.UpdateOrganizationRequest;
+import com.mockify.backend.dto.response.organization.OrganizationDetailResponse;
 import com.mockify.backend.dto.response.organization.OrganizationResponse;
 import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.exception.ResourceNotFoundException;
+import com.mockify.backend.exception.UnauthorizedException;
 import com.mockify.backend.mapper.OrganizationMapper;
 import com.mockify.backend.model.Organization;
 import com.mockify.backend.model.User;
@@ -62,6 +64,21 @@ public class OrganizationServiceImpl implements OrganizationService {
         Organization organization = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found with ID: " + orgId));
         return organizationMapper.toResponse(organization);
+    }
+
+    // Get organization details with its owner and projects.
+    @Transactional(readOnly = true)
+    @Override
+    public OrganizationDetailResponse getOrganizationDetail(Long orgId, Long userId) {
+        log.debug("Fetching organization detail: {}", orgId);
+
+        Organization organization = organizationRepository.findByIdWithOwnerAndProjects(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found with id: " + orgId));
+
+        // Authorization check
+        accessControlService.checkOrganizationAccess(userId, organization, "Organization");
+
+        return organizationMapper.toDetailResponse(organization);
     }
 
     // Get all organizations owned by current user
