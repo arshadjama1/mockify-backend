@@ -21,7 +21,5 @@ public interface MockRecordService {
 
     void deleteRecord(Long userId, Long recordId);
 
-    void deleteExpiredRecords(); // system-level, no userId needed
-
     long countRecords();
 }
