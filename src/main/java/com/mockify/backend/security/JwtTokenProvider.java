@@ -4,23 +4,23 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.UUID;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class JwtTokenProvider {
 
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    // Get expiration time for access tokens
     @Getter
     @Value("${jwt.access.expiration}")
     private long accessTokenExpiration;
@@ -28,28 +28,11 @@ public class JwtTokenProvider {
     @Value("${jwt.refresh.expiration}")
     private long refreshTokenExpiration;
 
-    // Accept base64 or plain secret
+    // Generate signing key from secret
     private SecretKey getSigningKey() {
-        try {
-            byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
-
-            if (keyBytes.length < 32) {
-                log.warn("Base64 key is <256 bits — weak secret.");
-            }
-            return Keys.hmacShaKeyFor(keyBytes);
-
-        } catch (Exception e) {
-            byte[] rawBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-
-            if (rawBytes.length < 32) {
-                log.warn("Raw secret is <256 bits — weak secret.");
-            }
-
-            log.warn("Using raw UTF-8 bytes as secret. Prefer Base64 encoded secret.");
-            return Keys.hmacShaKeyFor(rawBytes);
-        }
+        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
-
 
     // Generate JWT access token for a user
     public String generateAccessToken(Long userId) {
