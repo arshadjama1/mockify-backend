@@ -1,12 +1,14 @@
 package com.mockify.backend.dto.response.error;
 
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+import java.time.LocalDateTime;
+
+@Getter
 @Builder
 public class ErrorResponse {
-    private String timestamp;
+    private LocalDateTime timestamp;
     private int status;
     private String error;
     private String message;
