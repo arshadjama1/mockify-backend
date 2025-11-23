@@ -3,9 +3,11 @@ package com.mockify.backend.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.mockify.backend.dto.response.error.ErrorResponse;
 import com.mockify.backend.security.JwtAuthenticationFilter;
 import com.mockify.backend.security.oauth2.CustomOAuth2UserService;
 import com.mockify.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +25,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 
 @Configuration
@@ -76,6 +80,30 @@ public class SecurityConfig {
 
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
+                )
+
+                // If a request is unauthorized, don’t redirect just send a 401 JSON response.
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, authEx) -> {
+
+                            ErrorResponse response = ErrorResponse.builder()
+                                    .timestamp(LocalDateTime.now()
+                                            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))     // <-- formatted string
+                                    .status(HttpServletResponse.SC_UNAUTHORIZED)
+                                    .error("Unauthorized")
+                                    .message("Authentication required. Please login to access this resource.")
+                                    .path(req.getRequestURI())
+                                    .build();
+
+                            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            res.setContentType("application/json");
+
+                            ObjectMapper mapper = new ObjectMapper();
+                            mapper.registerModule(new JavaTimeModule());
+
+                            res.getWriter().write(mapper.writeValueAsString(response));
+                        })
+
                 )
 
                 // OAuth2 login config (user service + success handler)
