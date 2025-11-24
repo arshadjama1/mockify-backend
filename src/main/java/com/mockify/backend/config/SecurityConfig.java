@@ -58,6 +58,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/refresh").permitAll()
                         .requestMatchers("/api/v1/mock/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/api/v1/public/**").permitAll()
 
                         // OAuth2 endpoints must be public for the handshake
                         .requestMatchers("/oauth2/**").permitAll()
