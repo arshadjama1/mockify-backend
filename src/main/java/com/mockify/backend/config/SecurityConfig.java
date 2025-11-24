@@ -64,6 +64,15 @@ public class SecurityConfig {
                         .requestMatchers("/login/oauth2/**").permitAll()
                         .requestMatchers("/.well-known/**").permitAll()
 
+                        // Allows Swagger to work in DEV without requiring auth.
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
+
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )

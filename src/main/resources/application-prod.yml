@@ -13,3 +13,9 @@ jwt:
     expiration: ${JWT_ACCESS_EXPIRATION:900000}
   refresh:
     expiration: ${JWT_REFRESH_EXPIRATION:86400000}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
