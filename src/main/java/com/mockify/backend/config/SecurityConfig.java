@@ -1,15 +1,10 @@
 package com.mockify.backend.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.mockify.backend.dto.response.error.ErrorResponse;
+import com.mockify.backend.security.CustomAuthenticationEntryPoint;
 import com.mockify.backend.security.JwtAuthenticationFilter;
 import com.mockify.backend.security.oauth2.CustomOAuth2UserService;
 import com.mockify.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -26,7 +21,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.time.LocalDateTime;
 import java.util.Arrays;
 
 @Configuration
@@ -35,7 +29,7 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final ApplicationContext context;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -47,15 +41,6 @@ public class SecurityConfig {
             AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
-
-    @Bean
-    public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        return mapper;
-    }
-
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
@@ -85,23 +70,7 @@ public class SecurityConfig {
 
                 // If a request is unauthorized, don’t redirect just send a 401 JSON response.
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((req, res, authEx) -> {
-                            ObjectMapper mapper = context.getBean(ObjectMapper.class);
-
-                            ErrorResponse response = ErrorResponse.builder()
-                                    .timestamp(LocalDateTime.now())
-                                    .status(HttpServletResponse.SC_UNAUTHORIZED)
-                                    .error("Unauthorized")
-                                    .message(authEx.getMessage())
-                                    .path(req.getRequestURI())
-                                    .build();
-
-                            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            res.setContentType("application/json");
-
-                            res.getWriter().write(mapper.writeValueAsString(response));
-                        })
-
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
                 )
 
                 // OAuth2 login config (user service + success handler)
