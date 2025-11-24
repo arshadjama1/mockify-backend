@@ -4,6 +4,7 @@ import com.mockify.backend.dto.request.record.CreateMockRecordRequest;
 import com.mockify.backend.dto.request.record.UpdateMockRecordRequest;
 import com.mockify.backend.dto.response.record.MockRecordResponse;
 import com.mockify.backend.service.MockRecordService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,10 +16,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@RestController
-@RequestMapping("/api/v1")
-@RequiredArgsConstructor
 @Slf4j
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1")
+@Tag(name = "Mock Record")
 public class MockRecordController {
 
     private final MockRecordService mockRecordService;

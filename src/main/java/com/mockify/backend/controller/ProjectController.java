@@ -4,6 +4,7 @@ import com.mockify.backend.dto.request.project.CreateProjectRequest;
 import com.mockify.backend.dto.request.project.UpdateProjectRequest;
 import com.mockify.backend.dto.response.project.ProjectResponse;
 import com.mockify.backend.service.ProjectService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,10 +16,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@RestController
-@RequestMapping("/api/v1")
-@RequiredArgsConstructor
 @Slf4j
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1")
+@Tag(name = "Project")
 public class ProjectController {
 
     private final ProjectService projectService;
