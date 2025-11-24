@@ -51,10 +51,3 @@ spring:
 app:
   frontend:
     url: http://localhost:3000
-
-
-  public-schemas:
-    - 1
-    - 4
-    - 2
-    - 5
