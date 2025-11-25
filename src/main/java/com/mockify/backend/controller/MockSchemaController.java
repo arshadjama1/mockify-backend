@@ -4,6 +4,7 @@ import com.mockify.backend.dto.request.schema.CreateMockSchemaRequest;
 import com.mockify.backend.dto.request.schema.UpdateMockSchemaRequest;
 import com.mockify.backend.dto.response.schema.MockSchemaResponse;
 import com.mockify.backend.service.MockSchemaService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,8 +15,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1")
+@Tag(name = "Mock Schema")
 public class MockSchemaController {
 
     private final MockSchemaService mockSchemaService;
