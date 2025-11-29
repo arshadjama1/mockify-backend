@@ -9,9 +9,9 @@ import java.util.Optional;
 
 public interface MockRecordService {
 
-    MockRecordResponse createRecord(Long userId, CreateMockRecordRequest request);
+    MockRecordResponse createRecord(Long userId, Long schemaId, CreateMockRecordRequest request);
 
-    List<MockRecordResponse> createRecordsBulk(Long userId, List<CreateMockRecordRequest> requests);
+    List<MockRecordResponse> createRecordsBulk(Long userId, Long schemaId, List<CreateMockRecordRequest> requests);
 
     MockRecordResponse getRecordById(Long userId, Long recordId);
 

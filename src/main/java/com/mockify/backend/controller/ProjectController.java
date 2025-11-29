@@ -2,6 +2,7 @@ package com.mockify.backend.controller;
 
 import com.mockify.backend.dto.request.project.CreateProjectRequest;
 import com.mockify.backend.dto.request.project.UpdateProjectRequest;
+import com.mockify.backend.dto.response.project.ProjectDetailResponse;
 import com.mockify.backend.dto.response.project.ProjectResponse;
 import com.mockify.backend.service.ProjectService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,14 +41,14 @@ public class ProjectController {
 
     //  Get a project by ID
     @GetMapping("/projects/{projectId}")
-    public ResponseEntity<ProjectResponse> getProjectById(
+    public ResponseEntity<ProjectDetailResponse> getProjectById(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         Long userId = Long.parseLong(userDetails.getUsername());
         log.debug("User {} fetching project details for ID {}", userId, projectId);
 
-        ProjectResponse project = projectService.getProjectById(userId, projectId);
+        ProjectDetailResponse project = projectService.getProjectById(userId, projectId);
         return ResponseEntity.ok(project);
     }
 

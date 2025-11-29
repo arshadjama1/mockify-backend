@@ -2,6 +2,7 @@ package com.mockify.backend.service;
 
 import com.mockify.backend.dto.request.project.CreateProjectRequest;
 import com.mockify.backend.dto.request.project.UpdateProjectRequest;
+import com.mockify.backend.dto.response.project.ProjectDetailResponse;
 import com.mockify.backend.dto.response.project.ProjectResponse;
 
 import java.util.List;
@@ -15,7 +16,7 @@ public interface ProjectService {
     List<ProjectResponse> getProjectsByOrganizationId(Long userId, Long organizationId);
 
     // Fetch project details by ID
-    ProjectResponse getProjectById(Long userId, Long projectId);
+    ProjectDetailResponse getProjectById(Long userId, Long projectId);
 
     // Update project name or info
     ProjectResponse updateProject(Long userId, Long projectId, UpdateProjectRequest request);

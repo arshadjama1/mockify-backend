@@ -2,6 +2,7 @@ package com.mockify.backend.service.impl;
 
 import com.mockify.backend.dto.request.project.CreateProjectRequest;
 import com.mockify.backend.dto.request.project.UpdateProjectRequest;
+import com.mockify.backend.dto.response.project.ProjectDetailResponse;
 import com.mockify.backend.dto.response.project.ProjectResponse;
 import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.exception.ForbiddenException;
@@ -71,7 +72,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional(readOnly = true)
-    public ProjectResponse getProjectById(Long userId, Long projectId) {
+    public ProjectDetailResponse getProjectById(Long userId, Long projectId) {
         log.debug("User {} fetching project with ID {}", userId, projectId);
 
         Project project = projectRepository.findById(projectId)
@@ -79,7 +80,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         accessControlService.checkOrganizationAccess(userId, project.getOrganization(), "Project");
 
-        return projectMapper.toResponse(project);
+        return projectMapper.toDetailResponse(project);
     }
 
     @Override

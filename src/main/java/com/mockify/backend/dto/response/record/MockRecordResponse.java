@@ -12,7 +12,10 @@ import java.util.Map;
 public class MockRecordResponse {
     private Long id;
     private Long schemaId;
+    private String schemaName;
     private Map<String, Object> data;
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
+    private boolean expired;
+    private int ttlMinutes;
 }

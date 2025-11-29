@@ -3,6 +3,7 @@ package com.mockify.backend.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockify.backend.dto.request.schema.CreateMockSchemaRequest;
 import com.mockify.backend.dto.request.schema.UpdateMockSchemaRequest;
+import com.mockify.backend.dto.response.schema.MockSchemaDetailResponse;
 import com.mockify.backend.dto.response.schema.MockSchemaResponse;
 import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.exception.DuplicateResourceException;
@@ -92,9 +93,9 @@ public class MockSchemaServiceImpl implements MockSchemaService {
      */
     @Override
     @Transactional(readOnly = true)
-    public MockSchemaResponse getSchemaById(Long userId, Long schemaId) {
+    public MockSchemaDetailResponse getSchemaById(Long userId, Long schemaId) {
         MockSchema schema = getSchemaWithAccessCheck(schemaId, userId);
-        return mockSchemaMapper.toResponse(schema);
+        return mockSchemaMapper.toDetailResponse(schema);
     }
 
     /*

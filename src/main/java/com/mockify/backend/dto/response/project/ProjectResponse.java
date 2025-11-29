@@ -12,5 +12,8 @@ public class ProjectResponse {
     private Long id;
     private String name;
     private Long organizationId;
+    private String organizationName;
     private LocalDateTime createdAt;
+    private int schemaCount;
+    private int totalRecords;
 }

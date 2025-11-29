@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/public")
+@RequestMapping("/api/v1/mock")
 @RequiredArgsConstructor
 @Slf4j
 public class PublicMockRecordController {
