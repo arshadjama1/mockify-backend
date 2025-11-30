@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -36,7 +37,7 @@ public class MockRecordServiceImpl implements MockRecordService {
 
     @Override
     @Transactional
-    public MockRecordResponse createRecord(Long userId, Long schemaId, CreateMockRecordRequest request) {
+    public MockRecordResponse createRecord(UUID userId, UUID schemaId, CreateMockRecordRequest request) {
         log.info("User {} creating new mock record for schemaId={}", userId, schemaId);
 
 
@@ -71,7 +72,7 @@ public class MockRecordServiceImpl implements MockRecordService {
 
     @Override
     @Transactional
-    public List<MockRecordResponse> createRecordsBulk(Long userId, Long schemaId, List<CreateMockRecordRequest> requests) {
+    public List<MockRecordResponse> createRecordsBulk(UUID userId, UUID schemaId, List<CreateMockRecordRequest> requests) {
         log.info("Bulk create requested by userId={} count={}", userId, requests == null ? 0 : requests.size());
 
         if (requests == null) {
@@ -88,7 +89,7 @@ public class MockRecordServiceImpl implements MockRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public MockRecordResponse getRecordById(Long userId, Long recordId) {
+    public MockRecordResponse getRecordById(UUID userId, UUID recordId) {
         log.debug("Fetching record for userId={}, recordId={}", userId, recordId);
 
         MockRecord record = mockRecordRepository.findById(recordId)
@@ -101,7 +102,7 @@ public class MockRecordServiceImpl implements MockRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MockRecordResponse> getRecordsBySchemaId(Long userId, Long schemaId) {
+    public List<MockRecordResponse> getRecordsBySchemaId(UUID userId, UUID schemaId) {
         log.debug("Fetching records for userId={}, schemaId={}", userId, schemaId);
 
         MockSchema schema = mockSchemaRepository.findById(schemaId)
@@ -115,7 +116,7 @@ public class MockRecordServiceImpl implements MockRecordService {
 
     @Override
     @Transactional
-    public MockRecordResponse updateRecord(Long userId, Long recordId, UpdateMockRecordRequest request) {
+    public MockRecordResponse updateRecord(UUID userId, UUID recordId, UpdateMockRecordRequest request) {
         log.info("Updating record userId={}, recordId={}", userId, recordId);
 
         if (request == null) {
@@ -139,7 +140,7 @@ public class MockRecordServiceImpl implements MockRecordService {
 
     @Override
     @Transactional
-    public void deleteRecord(Long userId, Long recordId) {
+    public void deleteRecord(UUID userId, UUID recordId) {
         log.warn("Deleting record userId={}, recordId={}", userId, recordId);
 
         MockRecord record = mockRecordRepository.findById(recordId)

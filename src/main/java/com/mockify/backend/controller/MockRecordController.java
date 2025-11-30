@@ -15,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -28,11 +29,11 @@ public class MockRecordController {
     // Create a new mock record
     @PostMapping("/schemas/{schemaId}/records")
     public ResponseEntity<MockRecordResponse> createRecord(
-            @PathVariable Long schemaId,
+            @PathVariable UUID schemaId,
             @Valid @RequestBody CreateMockRecordRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.info("User {} creating new mock record under schema {}", userId, schemaId);
 
         MockRecordResponse created = mockRecordService.createRecord(userId, schemaId, request);
@@ -42,11 +43,11 @@ public class MockRecordController {
     // Create multiple records in bulk
     @PostMapping("/schemas/{schemaId}/records/bulk")
     public ResponseEntity<List<MockRecordResponse>> createRecordsBulk(
-            @PathVariable Long schemaId,
+            @PathVariable UUID schemaId,
             @Valid @RequestBody List<CreateMockRecordRequest> requests,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.info("User {} bulk creating {} records", userId, requests.size());
 
         List<MockRecordResponse> created = mockRecordService.createRecordsBulk(userId, schemaId, requests);
@@ -56,10 +57,10 @@ public class MockRecordController {
     // Get a record by ID
     @GetMapping("/records/{recordId}")
     public ResponseEntity<MockRecordResponse> getRecordById(
-            @PathVariable Long recordId,
+            @PathVariable UUID recordId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.debug("User {} fetching record with ID {}", userId, recordId);
 
         MockRecordResponse record = mockRecordService.getRecordById(userId, recordId);
@@ -69,10 +70,10 @@ public class MockRecordController {
     // Get all records under a specific schema
     @GetMapping("/schemas/{schemaId}/records")
     public ResponseEntity<List<MockRecordResponse>> getRecordsBySchema(
-            @PathVariable Long schemaId,
+            @PathVariable UUID schemaId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.debug("User {} fetching all records under schema {}", userId, schemaId);
 
         List<MockRecordResponse> records = mockRecordService.getRecordsBySchemaId(userId, schemaId);
@@ -82,11 +83,11 @@ public class MockRecordController {
     // Update an existing mock record
     @PutMapping("/records/{recordId}")
     public ResponseEntity<MockRecordResponse> updateRecord(
-            @PathVariable Long recordId,
+            @PathVariable UUID recordId,
             @Valid @RequestBody UpdateMockRecordRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.info("User {} updating record ID {}", userId, recordId);
 
         MockRecordResponse updated = mockRecordService.updateRecord(userId, recordId, request);
@@ -96,10 +97,10 @@ public class MockRecordController {
     // Delete a record by ID
     @DeleteMapping("/records/{recordId}")
     public ResponseEntity<Void> deleteRecord(
-            @PathVariable Long recordId,
+            @PathVariable UUID recordId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.warn("User {} deleting record ID {}", userId, recordId);
 
         mockRecordService.deleteRecord(userId, recordId);

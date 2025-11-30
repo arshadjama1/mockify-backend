@@ -3,6 +3,7 @@ package com.mockify.backend.dto.response.record;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -10,8 +11,8 @@ import java.util.Map;
 @AllArgsConstructor
 @Builder
 public class MockRecordResponse {
-    private Long id;
-    private Long schemaId;
+    private UUID id;
+    private UUID schemaId;
     private String schemaName;
     private Map<String, Object> data;
     private LocalDateTime createdAt;

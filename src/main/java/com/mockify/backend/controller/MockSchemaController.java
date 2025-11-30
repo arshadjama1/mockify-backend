@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -28,48 +29,48 @@ public class MockSchemaController {
             @RequestBody CreateMockSchemaRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         MockSchemaResponse response = mockSchemaService.createSchema(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/projects/{projectId}/schemas")
     public ResponseEntity<List<MockSchemaResponse>> getSchemasByProject(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         List<MockSchemaResponse> schemas = mockSchemaService.getSchemasByProjectId(userId, projectId);
         return ResponseEntity.ok(schemas);
     }
 
     @GetMapping("/schemas/{schemaId}")
     public ResponseEntity<MockSchemaDetailResponse> getSchemaById(
-            @PathVariable Long schemaId,
+            @PathVariable UUID schemaId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         MockSchemaDetailResponse response = mockSchemaService.getSchemaById(userId, schemaId);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/schemas/{schemaId}")
     public ResponseEntity<MockSchemaResponse> updateSchema(
-            @PathVariable Long schemaId,
+            @PathVariable UUID schemaId,
             @RequestBody UpdateMockSchemaRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         MockSchemaResponse response = mockSchemaService.updateSchema(userId, schemaId, request);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/schemas/{schemaId}")
     public ResponseEntity<Void> deleteSchema(
-            @PathVariable Long schemaId,
+            @PathVariable UUID schemaId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         mockSchemaService.deleteSchema(userId, schemaId);
         return ResponseEntity.noContent().build();
     }
