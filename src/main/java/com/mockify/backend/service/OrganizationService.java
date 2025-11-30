@@ -7,27 +7,28 @@ import com.mockify.backend.dto.response.organization.OrganizationResponse;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 //Handles all CRUD operations related to organizations.
 public interface OrganizationService {
 
     // Create new organization under current user
-    OrganizationResponse createOrganization(Long userId, CreateOrganizationRequest request);
+    OrganizationResponse createOrganization(UUID userId, CreateOrganizationRequest request);
 
     // Fetch organization details by ID
-    OrganizationResponse getOrganizationById(Long orgId);
+    OrganizationResponse getOrganizationById(UUID orgId);
 
     // Get organization details with its owner and projects.
-    OrganizationDetailResponse getOrganizationDetail(Long orgId, Long userId);
+    OrganizationDetailResponse getOrganizationDetail(UUID orgId, UUID userId);
 
     // Get all organizations owned by current user
-    List<OrganizationResponse> getMyOrganizations(Long userId);
+    List<OrganizationResponse> getMyOrganizations(UUID userId);
 
     // Update organization name or details
-    OrganizationResponse updateOrganization(Long userId, Long orgId, UpdateOrganizationRequest request);
+    OrganizationResponse updateOrganization(UUID userId, UUID orgId, UpdateOrganizationRequest request);
 
     // Delete organization (and optionally its related projects)
-    void deleteOrganization(Long userId, Long orgId);
+    void deleteOrganization(UUID userId, UUID orgId);
 
     // Count total organizations in system
     long countOrganizations();

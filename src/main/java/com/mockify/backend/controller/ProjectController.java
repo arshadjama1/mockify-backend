@@ -16,6 +16,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -32,7 +33,7 @@ public class ProjectController {
             @Valid @RequestBody CreateProjectRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.info("User {} creating new project '{}' under organization {}", userId, request.getName(), request.getOrganizationId());
 
         ProjectResponse created = projectService.createProject(userId, request);
@@ -42,10 +43,10 @@ public class ProjectController {
     //  Get a project by ID
     @GetMapping("/projects/{projectId}")
     public ResponseEntity<ProjectDetailResponse> getProjectById(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.debug("User {} fetching project details for ID {}", userId, projectId);
 
         ProjectDetailResponse project = projectService.getProjectById(userId, projectId);
@@ -55,10 +56,10 @@ public class ProjectController {
     //  Get all projects under a specific organization
     @GetMapping("/organizations/{organizationId}/projects")
     public ResponseEntity<List<ProjectResponse>> getProjectsByOrganization(
-            @PathVariable Long organizationId,
+            @PathVariable UUID organizationId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.debug("User {} fetching all projects under organization {}", userId, organizationId);
 
         List<ProjectResponse> projects = projectService.getProjectsByOrganizationId(userId, organizationId);
@@ -68,11 +69,11 @@ public class ProjectController {
     // Update an existing project
     @PutMapping("/projects/{projectId}")
     public ResponseEntity<ProjectResponse> updateProject(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @Valid @RequestBody UpdateProjectRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.info("User {} updating project ID {} with new data: {}", userId, projectId, request);
 
         ProjectResponse updated = projectService.updateProject(userId, projectId, request);
@@ -82,10 +83,10 @@ public class ProjectController {
     //  Delete a project
     @DeleteMapping("/projects/{projectId}")
     public ResponseEntity<Void> deleteProject(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.warn("User {} deleting project ID {}", userId, projectId);
 
         projectService.deleteProject(userId, projectId);

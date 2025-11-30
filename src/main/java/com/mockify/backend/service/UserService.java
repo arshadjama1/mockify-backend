@@ -3,12 +3,13 @@ package com.mockify.backend.service;
 import com.mockify.backend.dto.response.auth.UserResponse;
 
 import java.util.List;
+import java.util.UUID;
 
 //Manages users (typically admin-level operations).
 public interface UserService {
 
     // Fetch user details by ID
-    UserResponse getUserById(Long id);
+    UserResponse getUserById(UUID id);
 
     // Fetch user details by email
     UserResponse getUserByEmail(String email);
@@ -17,7 +18,7 @@ public interface UserService {
     List<UserResponse> getAllUsers();
 
     // Delete user by ID
-    void deleteUser(Long id);
+    void deleteUser(UUID id);
 
     // Check if email already exists
     boolean existsByEmail(String email);

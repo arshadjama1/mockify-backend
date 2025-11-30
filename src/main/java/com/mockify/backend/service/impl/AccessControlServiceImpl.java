@@ -5,11 +5,13 @@ import com.mockify.backend.model.Organization;
 import com.mockify.backend.service.AccessControlService;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class AccessControlServiceImpl implements AccessControlService {
 
     @Override
-    public void checkOrganizationAccess(Long userId, Organization organization, String resourceName) {
+    public void checkOrganizationAccess(UUID userId, Organization organization, String resourceName) {
 
         // Current rule: only owner has access
         if (!organization.getOwner().getId().equals(userId)) {

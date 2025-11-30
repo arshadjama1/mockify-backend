@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +26,7 @@ public class PublicMockRecordServiceImpl implements PublicMockRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public MockRecordResponse getRecordById(Long schemaId, Long recordId) {
+    public MockRecordResponse getRecordById(UUID schemaId, UUID recordId) {
         log.info("Public user requesting recordId={} for schemaId={}", recordId, schemaId);
 
         MockRecord record = mockRecordRepository.findById(recordId)
@@ -41,7 +42,7 @@ public class PublicMockRecordServiceImpl implements PublicMockRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MockRecordResponse> getRecordsBySchemaId(Long schemaId) {
+    public List<MockRecordResponse> getRecordsBySchemaId(UUID schemaId) {
         log.info("Public user requesting all records for schemaId={}", schemaId);
 
         List<MockRecord> records = mockRecordRepository.findByMockSchema_Id(schemaId);

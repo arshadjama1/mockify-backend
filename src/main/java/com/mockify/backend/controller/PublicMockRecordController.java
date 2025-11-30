@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/mock")
@@ -22,13 +23,13 @@ public class PublicMockRecordController {
      */
     @GetMapping("/schemas/{schemaId}/records/{recordId}")
     public ResponseEntity<MockRecordResponse> getRecordById(
-            @PathVariable Long schemaId,
-            @PathVariable Long recordId) {
+            @PathVariable UUID schemaId,
+            @PathVariable UUID recordId) {
 
         log.info("Public user fetching recordId={} for schemaId={}", recordId, schemaId);
 
-        MockRecordResponse record = publicMockRecordService.getRecordById(schemaId, recordId);
-        return ResponseEntity.ok(record);
+        MockRecordResponse records = publicMockRecordService.getRecordById(schemaId, recordId);
+        return ResponseEntity.ok(records);
     }
 
     /**
@@ -36,7 +37,7 @@ public class PublicMockRecordController {
      */
     @GetMapping("/schemas/{schemaId}/records")
     public ResponseEntity<List<MockRecordResponse>> getRecordsBySchema(
-            @PathVariable Long schemaId) {
+            @PathVariable UUID schemaId) {
 
         log.info("Public user fetching all records for schemaId={}", schemaId);
 

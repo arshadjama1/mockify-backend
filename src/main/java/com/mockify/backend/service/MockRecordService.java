@@ -6,20 +6,21 @@ import com.mockify.backend.dto.response.record.MockRecordResponse;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface MockRecordService {
 
-    MockRecordResponse createRecord(Long userId, Long schemaId, CreateMockRecordRequest request);
+    MockRecordResponse createRecord(UUID userId, UUID schemaId, CreateMockRecordRequest request);
 
-    List<MockRecordResponse> createRecordsBulk(Long userId, Long schemaId, List<CreateMockRecordRequest> requests);
+    List<MockRecordResponse> createRecordsBulk(UUID userId, UUID schemaId, List<CreateMockRecordRequest> requests);
 
-    MockRecordResponse getRecordById(Long userId, Long recordId);
+    MockRecordResponse getRecordById(UUID userId, UUID recordId);
 
-    List<MockRecordResponse> getRecordsBySchemaId(Long userId, Long schemaId);
+    List<MockRecordResponse> getRecordsBySchemaId(UUID userId, UUID schemaId);
 
-    MockRecordResponse updateRecord(Long userId, Long recordId, UpdateMockRecordRequest request);
+    MockRecordResponse updateRecord(UUID userId, UUID recordId, UpdateMockRecordRequest request);
 
-    void deleteRecord(Long userId, Long recordId);
+    void deleteRecord(UUID userId, UUID recordId);
 
     long countRecords();
 }

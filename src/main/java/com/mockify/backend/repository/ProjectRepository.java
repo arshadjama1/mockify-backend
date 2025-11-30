@@ -5,18 +5,19 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface ProjectRepository extends JpaRepository<Project, Long> {
+public interface ProjectRepository extends JpaRepository<Project, UUID> {
 
     // Find all projects under an organization
-    List<Project> findByOrganizationId(Long organizationId);
+    List<Project> findByOrganizationId(UUID organizationId);
 
     // Find project by name and organization
-    Project findByNameAndOrganizationId(String name, Long organizationId);
+    Project findByNameAndOrganizationId(String name, UUID organizationId);
 
     // Delete all projects under an organization
-    void deleteByOrganizationId(Long organizationId);
+    void deleteByOrganizationId(UUID organizationId);
 
     // Count all projects
     long count();

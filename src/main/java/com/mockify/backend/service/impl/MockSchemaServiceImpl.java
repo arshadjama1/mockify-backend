@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -34,7 +35,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
     private final AccessControlService accessControlService;
 
     // Utility method to fetch project with ownership validation
-    private Project getProjectWithAccessCheck(Long projectId, Long userId) {
+    private Project getProjectWithAccessCheck(UUID projectId, UUID userId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
 
@@ -43,7 +44,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
     }
 
     // Utility method to fetch schema with ownership validation
-    private MockSchema getSchemaWithAccessCheck(Long schemaId, Long userId) {
+    private MockSchema getSchemaWithAccessCheck(UUID schemaId, UUID userId) {
         MockSchema schema = mockSchemaRepository.findById(schemaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Schema not found"));
 
@@ -57,7 +58,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
      */
     @Override
     @Transactional
-    public MockSchemaResponse createSchema(Long userId, CreateMockSchemaRequest request) {
+    public MockSchemaResponse createSchema(UUID userId, CreateMockSchemaRequest request) {
         Project project = getProjectWithAccessCheck(request.getProjectId(), userId);
 
         // Prevent duplicate schema name in the same project
@@ -82,7 +83,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
      */
     @Override
     @Transactional(readOnly = true)
-    public List<MockSchemaResponse> getSchemasByProjectId(Long userId, Long projectId) {
+    public List<MockSchemaResponse> getSchemasByProjectId(UUID userId, UUID projectId) {
         getProjectWithAccessCheck(projectId, userId);
         List<MockSchema> schemas = mockSchemaRepository.findByProjectId(projectId);
         return mockSchemaMapper.toResponseList(schemas);
@@ -93,7 +94,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
      */
     @Override
     @Transactional(readOnly = true)
-    public MockSchemaDetailResponse getSchemaById(Long userId, Long schemaId) {
+    public MockSchemaDetailResponse getSchemaById(UUID userId, UUID schemaId) {
         MockSchema schema = getSchemaWithAccessCheck(schemaId, userId);
         return mockSchemaMapper.toDetailResponse(schema);
     }
@@ -104,7 +105,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
      */
     @Override
     @Transactional
-    public MockSchemaResponse updateSchema(Long userId, Long schemaId, UpdateMockSchemaRequest request) {
+    public MockSchemaResponse updateSchema(UUID userId, UUID schemaId, UpdateMockSchemaRequest request) {
         MockSchema schema = getSchemaWithAccessCheck(schemaId, userId);
 
         // Check if new name conflicts with another schema in same project
@@ -133,7 +134,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
      */
     @Override
     @Transactional
-    public void deleteSchema(Long userId, Long schemaId) {
+    public void deleteSchema(UUID userId, UUID schemaId) {
         MockSchema schema = getSchemaWithAccessCheck(schemaId, userId);
         mockSchemaRepository.delete(schema);
     }

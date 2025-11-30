@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -34,7 +35,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     // Create new organization under current user
     @Transactional
     @Override
-    public OrganizationResponse createOrganization(Long userId, CreateOrganizationRequest request) {
+    public OrganizationResponse createOrganization(UUID userId, CreateOrganizationRequest request) {
         log.info("Creating organization '{}' for user ID {}", request.getName(), userId);
 
         User user = userRepository.findById(userId)
@@ -59,7 +60,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     // Fetch organization details by ID
     @Transactional(readOnly = true)
     @Override
-    public OrganizationResponse getOrganizationById(Long orgId) {
+    public OrganizationResponse getOrganizationById(UUID orgId) {
         log.debug("Fetching organization with ID: {}", orgId);
         Organization organization = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found with ID: " + orgId));
@@ -69,7 +70,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     // Get organization details with its owner and projects.
     @Transactional(readOnly = true)
     @Override
-    public OrganizationDetailResponse getOrganizationDetail(Long orgId, Long userId) {
+    public OrganizationDetailResponse getOrganizationDetail(UUID orgId, UUID userId) {
         log.debug("Fetching organization detail: {}", orgId);
 
         Organization organization = organizationRepository.findByIdWithOwnerAndProjects(orgId)
@@ -84,7 +85,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     // Get all organizations owned by current user
     @Transactional(readOnly = true)
     @Override
-    public List<OrganizationResponse> getMyOrganizations(Long userId) {
+    public List<OrganizationResponse> getMyOrganizations(UUID userId) {
         log.debug("Fetching organizations for user ID: {}", userId);
         List<Organization> organizations = organizationRepository.findByOwnerId(userId);
         return organizationMapper.toResponseList(organizations);
@@ -93,7 +94,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     // Update organization name or details
     @Transactional
     @Override
-    public OrganizationResponse updateOrganization(Long userId, Long orgId, UpdateOrganizationRequest request) {
+    public OrganizationResponse updateOrganization(UUID userId, UUID orgId, UpdateOrganizationRequest request) {
         log.info("Updating organization ID {} for user ID {}", orgId, userId);
 
         Organization organization = organizationRepository.findById(orgId)
@@ -120,7 +121,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     // Delete organization
     @Transactional
     @Override
-    public void deleteOrganization(Long userId, Long orgId) {
+    public void deleteOrganization(UUID userId, UUID orgId) {
         log.warn("Deleting organization ID {} by user ID {}", orgId, userId);
 
         Organization organization = organizationRepository.findById(orgId)

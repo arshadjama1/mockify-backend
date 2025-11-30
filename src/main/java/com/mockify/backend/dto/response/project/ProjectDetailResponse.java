@@ -2,13 +2,15 @@ package com.mockify.backend.dto.response.project;
 
 import lombok.Data;
 
+import java.rmi.server.UID;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 public class ProjectDetailResponse {
 
-    private Long id;
+    private UUID id;
     private String name;
     private OrganizationSummary organization;
     private LocalDateTime createdAt;
@@ -17,13 +19,13 @@ public class ProjectDetailResponse {
 
     @Data
     public static class OrganizationSummary {
-        private Long id;
+        private UUID id;
         private String name;
     }
 
     @Data
     public static class MockSchemaSummary {
-        private Long id;
+        private UUID id;
         private String name;
         private int recordCount;
         private LocalDateTime createdAt;

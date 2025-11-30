@@ -5,7 +5,6 @@ import com.mockify.backend.dto.request.project.UpdateProjectRequest;
 import com.mockify.backend.dto.response.project.ProjectDetailResponse;
 import com.mockify.backend.dto.response.project.ProjectResponse;
 import com.mockify.backend.exception.BadRequestException;
-import com.mockify.backend.exception.ForbiddenException;
 import com.mockify.backend.exception.ResourceNotFoundException;
 import com.mockify.backend.mapper.ProjectMapper;
 import com.mockify.backend.model.Organization;
@@ -20,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +33,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
-    public ProjectResponse createProject(Long userId, CreateProjectRequest request) {
+    public ProjectResponse createProject(UUID userId, CreateProjectRequest request) {
         log.info("User {} creating project '{}' under organization {}", userId, request.getName(), request.getOrganizationId());
 
         Organization organization = organizationRepository.findById(request.getOrganizationId())
@@ -58,7 +58,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProjectResponse> getProjectsByOrganizationId(Long userId, Long organizationId) {
+    public List<ProjectResponse> getProjectsByOrganizationId(UUID userId, UUID organizationId) {
         log.debug("User {} fetching projects for organization {}", userId, organizationId);
 
         Organization organization = organizationRepository.findById(organizationId)
@@ -72,7 +72,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional(readOnly = true)
-    public ProjectDetailResponse getProjectById(Long userId, Long projectId) {
+    public ProjectDetailResponse getProjectById(UUID userId, UUID projectId) {
         log.debug("User {} fetching project with ID {}", userId, projectId);
 
         Project project = projectRepository.findById(projectId)
@@ -85,7 +85,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
-    public ProjectResponse updateProject(Long userId, Long projectId, UpdateProjectRequest request) {
+    public ProjectResponse updateProject(UUID userId, UUID projectId, UpdateProjectRequest request) {
         log.info("User {} updating project with ID {}", userId, projectId);
 
         Project project = projectRepository.findById(projectId)
@@ -110,7 +110,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
-    public void deleteProject(Long userId, Long projectId) {
+    public void deleteProject(UUID userId, UUID projectId) {
         log.info("User {} deleting project with ID {}", userId, projectId);
 
         Project project = projectRepository.findById(projectId)

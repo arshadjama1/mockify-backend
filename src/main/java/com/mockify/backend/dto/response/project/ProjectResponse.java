@@ -2,6 +2,7 @@ package com.mockify.backend.dto.response.project;
 
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -9,9 +10,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class ProjectResponse {
-    private Long id;
+    private UUID id;
     private String name;
-    private Long organizationId;
+    private UUID organizationId;
     private String organizationName;
     private LocalDateTime createdAt;
     private int schemaCount;

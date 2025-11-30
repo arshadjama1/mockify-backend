@@ -5,11 +5,12 @@ import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Data
 public class MockSchemaDetailResponse {
 
-    private Long id;
+    private UUID id;
     private String name;
     private ProjectSummary project;
     private Map<String, Object> schemaJson;
@@ -19,7 +20,7 @@ public class MockSchemaDetailResponse {
 
     @Data
     public static class ProjectSummary {
-        private Long id;
+        private UUID id;
         private String name;
         private String organizationName;
     }
@@ -35,7 +36,7 @@ public class MockSchemaDetailResponse {
 
     @Data
     public static class MockRecordSummary {
-        private Long id;
+        private UUID id;
         private Map<String, Object> data;
         private LocalDateTime createdAt;
         private LocalDateTime expiresAt;
