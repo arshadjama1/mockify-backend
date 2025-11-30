@@ -2,6 +2,7 @@ package com.mockify.backend.controller;
 
 import com.mockify.backend.dto.request.schema.CreateMockSchemaRequest;
 import com.mockify.backend.dto.request.schema.UpdateMockSchemaRequest;
+import com.mockify.backend.dto.response.schema.MockSchemaDetailResponse;
 import com.mockify.backend.dto.response.schema.MockSchemaResponse;
 import com.mockify.backend.service.MockSchemaService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,12 +44,12 @@ public class MockSchemaController {
     }
 
     @GetMapping("/schemas/{schemaId}")
-    public ResponseEntity<MockSchemaResponse> getSchemaById(
+    public ResponseEntity<MockSchemaDetailResponse> getSchemaById(
             @PathVariable Long schemaId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         Long userId = Long.parseLong(userDetails.getUsername());
-        MockSchemaResponse response = mockSchemaService.getSchemaById(userId, schemaId);
+        MockSchemaDetailResponse response = mockSchemaService.getSchemaById(userId, schemaId);
         return ResponseEntity.ok(response);
     }
 

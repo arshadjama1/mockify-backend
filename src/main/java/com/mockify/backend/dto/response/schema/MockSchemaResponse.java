@@ -13,6 +13,9 @@ public class MockSchemaResponse {
     private Long id;
     private String name;
     private Long projectId;
+    private String projectName;
     private Map<String, Object> schemaJson;
     private LocalDateTime createdAt;
+    private int recordCount;
+    private String endpointUrl;
 }

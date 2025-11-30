@@ -28,26 +28,28 @@ public class MockRecordController {
     // Create a new mock record
     @PostMapping("/schemas/{schemaId}/records")
     public ResponseEntity<MockRecordResponse> createRecord(
+            @PathVariable Long schemaId,
             @Valid @RequestBody CreateMockRecordRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         Long userId = Long.parseLong(userDetails.getUsername());
-        log.info("User {} creating new mock record under schema {}", userId, request.getSchemaId());
+        log.info("User {} creating new mock record under schema {}", userId, schemaId);
 
-        MockRecordResponse created = mockRecordService.createRecord(userId, request);
+        MockRecordResponse created = mockRecordService.createRecord(userId, schemaId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     // Create multiple records in bulk
     @PostMapping("/schemas/{schemaId}/records/bulk")
     public ResponseEntity<List<MockRecordResponse>> createRecordsBulk(
+            @PathVariable Long schemaId,
             @Valid @RequestBody List<CreateMockRecordRequest> requests,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         Long userId = Long.parseLong(userDetails.getUsername());
         log.info("User {} bulk creating {} records", userId, requests.size());
 
-        List<MockRecordResponse> created = mockRecordService.createRecordsBulk(userId, requests);
+        List<MockRecordResponse> created = mockRecordService.createRecordsBulk(userId, schemaId, requests);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

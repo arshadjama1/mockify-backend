@@ -14,7 +14,9 @@ import java.util.List;
 public interface OrganizationMapper {
 
     // Entity -> Response
-    @Mapping(source = "owner.id", target = "ownerId")
+    @Mapping(target = "ownerId", source = "owner.id")
+    @Mapping(target = "ownerName", source = "owner.name")
+    @Mapping(target = "projectCount", expression = "java(organization.getProjects().size())")
     OrganizationResponse toResponse(Organization organization);
     List<OrganizationResponse> toResponseList(List<Organization> organizations);
 

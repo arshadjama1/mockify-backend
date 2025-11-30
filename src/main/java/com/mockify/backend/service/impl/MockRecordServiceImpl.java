@@ -36,22 +36,21 @@ public class MockRecordServiceImpl implements MockRecordService {
 
     @Override
     @Transactional
-    public MockRecordResponse createRecord(Long userId, CreateMockRecordRequest request) {
-        log.info("User {} creating new mock record for schemaId={}", userId,
-                request != null ? request.getSchemaId() : null);
+    public MockRecordResponse createRecord(Long userId, Long schemaId, CreateMockRecordRequest request) {
+        log.info("User {} creating new mock record for schemaId={}", userId, schemaId);
 
-        
+
         if (request == null) {
             throw new BadRequestException("Request cannot be null");
         }
-        if (request.getSchemaId() == null) {
+        if (schemaId == null) {
             throw new BadRequestException("Schema ID is required");
         }
         if (request.getData() == null) {
             throw new BadRequestException("Record data cannot be null");
         }
 
-        MockSchema schema = mockSchemaRepository.findById(request.getSchemaId())
+        MockSchema schema = mockSchemaRepository.findById(schemaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Schema not found"));
 
         // check organization ownership via schema -> organization
@@ -72,7 +71,7 @@ public class MockRecordServiceImpl implements MockRecordService {
 
     @Override
     @Transactional
-    public List<MockRecordResponse> createRecordsBulk(Long userId, List<CreateMockRecordRequest> requests) {
+    public List<MockRecordResponse> createRecordsBulk(Long userId, Long schemaId, List<CreateMockRecordRequest> requests) {
         log.info("Bulk create requested by userId={} count={}", userId, requests == null ? 0 : requests.size());
 
         if (requests == null) {
@@ -81,9 +80,9 @@ public class MockRecordServiceImpl implements MockRecordService {
         if (requests.isEmpty()) {
             throw new BadRequestException("Records list cannot be empty");
         }
-        
+
         return requests.stream()
-                .map(req -> createRecord(userId, req))
+                .map(req -> createRecord(userId, schemaId, req))
                 .toList();
     }
 
