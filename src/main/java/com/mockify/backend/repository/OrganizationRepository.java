@@ -8,25 +8,26 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface OrganizationRepository extends JpaRepository<Organization, Long> {
+public interface OrganizationRepository extends JpaRepository<Organization, UUID> {
 
     // Find all organizations owned by a user
-    List<Organization> findByOwnerId(Long ownerId);
+    List<Organization> findByOwnerId(UUID ownerId);
 
     // Find organization with owner and projects
     @Query("SELECT DISTINCT o FROM Organization o " +
             "JOIN FETCH o.owner " +
             "LEFT JOIN FETCH o.projects " +
             "WHERE o.id = :id")
-    Optional<Organization> findByIdWithOwnerAndProjects(@Param("id") Long id);
+    Optional<Organization> findByIdWithOwnerAndProjects(@Param("id") UUID id);
 
     // Check if organization exists by name
     boolean existsByName(String name);
 
     // Delete by owner
-    void deleteByOwnerId(Long ownerId);
+    void deleteByOwnerId(UUID ownerId);
 
     // Count all organizations
     long count();

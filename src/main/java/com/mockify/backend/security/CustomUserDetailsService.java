@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -24,18 +25,17 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
-        return loadUserById(Long.parseLong(userId));
+        return loadUserById(UUID.fromString(userId));
     }
 
-    // Loads a user by their ID
-    public UserDetails loadUserById(Long userId) {
+    public UserDetails loadUserById(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + userId));
 
         return new org.springframework.security.core.userdetails.User(
-                String.valueOf(user.getId()),
+                user.getId().toString(),
                 user.getPassword(),
-                Collections.emptyList() // No roles for now
+                Collections.emptyList()
         );
     }
 }

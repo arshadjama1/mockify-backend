@@ -5,11 +5,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 @Entity
 @Table(name = "mock_records")
@@ -19,8 +18,9 @@ import java.util.Map;
 @AllArgsConstructor
 public class MockRecord {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    @Column(updatable = false, nullable = false)
+    private UUID id;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)

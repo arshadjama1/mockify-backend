@@ -6,6 +6,8 @@ import com.mockify.backend.dto.request.auth.RegisterRequest;
 import com.mockify.backend.dto.response.auth.AuthResponse;
 import com.mockify.backend.dto.response.auth.UserResponse;
 
+import java.util.UUID;
+
 public interface AuthService {
 
     // Register a new user
@@ -15,7 +17,7 @@ public interface AuthService {
     AuthResponse login(LoginRequest request);
 
     // Fetch details of currently authenticated user
-    UserResponse getCurrentUser(Long userId);
+    UserResponse getCurrentUser(UUID userId);
 
     // Logout user and invalidate tokens
     void logout();

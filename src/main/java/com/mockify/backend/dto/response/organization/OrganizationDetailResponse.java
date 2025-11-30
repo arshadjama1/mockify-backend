@@ -4,6 +4,7 @@ import com.mockify.backend.dto.response.auth.UserResponse;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -11,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class OrganizationDetailResponse {
-    private Long id;
+    private UUID id;
     private String name;
     private UserResponse owner;
     private LocalDateTime createdAt;
@@ -19,7 +20,7 @@ public class OrganizationDetailResponse {
 
     @Data
     public static class ProjectSummary {
-        private Long id;
+        private UUID id;
         private String name;
         private int schemaCount;
         private LocalDateTime createdAt;

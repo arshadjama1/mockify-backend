@@ -19,6 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -110,7 +112,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Extract user ID from refresh token
-        Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+        UUID userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
         if (userId == null) {
             log.warn("Unable to extract user ID from refresh token");
             throw new UnauthorizedException("Invalid refresh token");
@@ -140,7 +142,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserResponse getCurrentUser(Long userId) {
+    public UserResponse getCurrentUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return userMapper.toResponse(user);

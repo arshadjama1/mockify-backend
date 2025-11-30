@@ -16,6 +16,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -33,7 +34,7 @@ public class OrganizationController {
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CreateOrganizationRequest request) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.info("User ID {} creating organization: {}", userId, request.getName());
 
         OrganizationResponse response = organizationService.createOrganization(userId, request);
@@ -44,8 +45,8 @@ public class OrganizationController {
     @GetMapping("/{orgId}")
     public ResponseEntity<OrganizationDetailResponse> getOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long orgId) {
-        Long userId = Long.parseLong(userDetails.getUsername());
+            @PathVariable UUID orgId) {
+        UUID userId = UUID.fromString(userDetails.getUsername());
         log.debug("Fetching organization: {} for user: {}", orgId, userId);
         OrganizationDetailResponse org = organizationService.getOrganizationDetail(orgId, userId);
         return ResponseEntity.ok(org);
@@ -56,7 +57,7 @@ public class OrganizationController {
     public ResponseEntity<List<OrganizationResponse>> getMyOrganizations(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         List<OrganizationResponse> responses = organizationService.getMyOrganizations(userId);
         return ResponseEntity.ok(responses);
     }
@@ -65,10 +66,10 @@ public class OrganizationController {
     @PutMapping("/{orgId}")
     public ResponseEntity<OrganizationResponse> updateOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long orgId,
+            @PathVariable UUID orgId,
             @Valid @RequestBody UpdateOrganizationRequest request) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         OrganizationResponse updated = organizationService.updateOrganization(userId, orgId, request);
         return ResponseEntity.ok(updated);
     }
@@ -77,9 +78,9 @@ public class OrganizationController {
     @DeleteMapping("/{orgId}")
     public ResponseEntity<Void> deleteOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long orgId) {
+            @PathVariable UUID orgId) {
 
-        Long userId = Long.parseLong(userDetails.getUsername());
+        UUID userId = UUID.fromString(userDetails.getUsername());
         organizationService.deleteOrganization(userId, orgId);
         return ResponseEntity.noContent().build();
     }

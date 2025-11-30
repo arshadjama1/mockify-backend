@@ -35,17 +35,17 @@ public class JwtTokenProvider {
     }
 
     // Generate JWT access token for a user
-    public String generateAccessToken(Long userId) {
+    public String generateAccessToken(UUID userId) {
         return generateToken(userId, accessTokenExpiration, "access");
     }
 
     // Generate JWT refresh token for a user
-    public String generateRefreshToken(Long userId) {
+    public String generateRefreshToken(UUID userId) {
         return generateToken(userId, refreshTokenExpiration, "refresh");
     }
 
     // Token generation core logic
-    private String generateToken(Long userId, long expiration, String tokenType) {
+    private String generateToken(UUID userId, long expiration, String tokenType) {
         Date now = new Date();
         Date expirationTime = new Date(now.getTime() + expiration);
 
@@ -72,10 +72,10 @@ public class JwtTokenProvider {
     }
 
     // Extract user ID from token
-    public Long getUserIdFromToken(String token) {
+    public UUID getUserIdFromToken(String token) {
         try {
             Claims claims = getAllClaims(token);
-            return Long.parseLong(claims.getSubject());
+            return UUID.fromString(claims.getSubject());
         } catch (JwtException | IllegalArgumentException e) {
             log.error("Invalid JWT token: {}", e.getMessage());
             return null;

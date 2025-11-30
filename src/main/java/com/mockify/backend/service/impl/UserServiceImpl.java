@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 //admin-level operations.
 @Service
@@ -24,7 +25,7 @@ public class UserServiceImpl implements UserService {
 
     // Fetch user details by ID
     @Override
-    public UserResponse getUserById(Long id) {
+    public UserResponse getUserById(UUID id) {
         log.info("Fetching user with ID: {}", id);
 
         User user = userRepository.findById(id)
@@ -55,7 +56,7 @@ public class UserServiceImpl implements UserService {
     // Delete user by ID
     @Transactional
     @Override
-    public void deleteUser(Long id) {
+    public void deleteUser(UUID id) {
         log.info("Deleting user with ID: {}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Cannot delete, User not found with ID: " + id));

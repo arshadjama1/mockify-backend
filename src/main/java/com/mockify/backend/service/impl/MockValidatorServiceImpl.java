@@ -15,9 +15,7 @@ public class MockValidatorServiceImpl implements MockValidatorService {
     private static final Set<String> ALLOWED_TYPES =
             Set.of("string", "number", "boolean", "array", "object");
 
-    // -------------------------
-    // 1) Validate Schema Types
-    // -------------------------
+    // Validate Schema Types
     @Override
     public void validateSchemaDefinition(Map<String, Object> schemaJson) {
 
@@ -50,9 +48,8 @@ public class MockValidatorServiceImpl implements MockValidatorService {
         }
     }
 
-    // -------------------------
-    // 2) Validate Record JSON
-    // -------------------------
+
+    // Validate Record JSON
     @Override
     public void validateRecordAgainstSchema(
             Map<String, Object> schemaJson,

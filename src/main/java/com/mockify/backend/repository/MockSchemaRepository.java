@@ -5,18 +5,19 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface MockSchemaRepository extends JpaRepository<MockSchema, Long> {
+public interface MockSchemaRepository extends JpaRepository<MockSchema, UUID> {
 
     // Find all schemas under a project
-    List<MockSchema> findByProjectId(Long projectId);
+    List<MockSchema> findByProjectId(UUID projectId);
 
     // Find schema by name under a project
-    MockSchema findByNameAndProjectId(String name, Long projectId);
+    MockSchema findByNameAndProjectId(String name, UUID projectId);
 
     // Delete schemas under a project
-    void deleteByProjectId(Long projectId);
+    void deleteByProjectId(UUID projectId);
 
     // Count all schemas
     long count();
