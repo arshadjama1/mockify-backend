@@ -7,7 +7,7 @@ ALTER TABLE users
     ADD COLUMN username VARCHAR(150),
     ADD COLUMN first_name VARCHAR(150),
     ADD COLUMN last_name VARCHAR(150),
-    ADD COLUMN profile_url TEXT;
+    ADD COLUMN avatar_url TEXT,
     ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
 
 -- Generate usernames for existing users from email
@@ -117,13 +117,13 @@ CREATE TABLE endpoints (
 
     -- Scoped uniqueness rules for slugs (match existing org/project/schema rules)
     CONSTRAINT endpoints_org_slug_unique
-        UNIQUE (organization_id, slug),
+        UNIQUE (slug) DEFERRABLE INITIALLY DEFERRED,
 
     CONSTRAINT endpoints_project_slug_unique
-        UNIQUE (project_id, slug),
+       UNIQUE (organization_id, slug),
 
     CONSTRAINT endpoints_schema_slug_unique
-        UNIQUE (schema_id, slug)
+        UNIQUE (project_id, slug)
 );
 
 -- 7. Populate endpoints table from existing data
