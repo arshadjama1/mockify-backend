@@ -1,4 +1,3 @@
-// MockRecord.java
 package com.mockify.backend.model;
 
 import jakarta.persistence.*;
@@ -24,7 +23,7 @@ public class MockRecord {
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mock_schema_id")
+    @JoinColumn(name = "mock_schema_id", nullable = false)
     private MockSchema mockSchema;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -37,10 +36,21 @@ public class MockRecord {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
