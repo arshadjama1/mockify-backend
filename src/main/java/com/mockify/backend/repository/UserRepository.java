@@ -21,4 +21,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     // Count all users
     long count();
+
+    Optional<User> findByUsername(String username);
+
+    Optional<User> findByProviderNameAndProviderId(String providerName, String providerId);
+
+    boolean existsByUsername(String username);
 }

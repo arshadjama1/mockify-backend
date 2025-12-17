@@ -14,7 +14,15 @@ public class UserResponse {
     private UUID id;
     private String name;
     private String email;
+    private String username;
+    private String firstName;
+    private String lastName;
+    private String avatarUrl;
+    private String providerName;
 
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
+
+    @JsonProperty("updated_at")
+    private LocalDateTime updatedAt;
 }
