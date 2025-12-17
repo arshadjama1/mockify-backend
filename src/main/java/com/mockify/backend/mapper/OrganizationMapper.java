@@ -18,6 +18,7 @@ public interface OrganizationMapper {
     @Mapping(target = "ownerName", source = "owner.name")
     @Mapping(target = "projectCount", expression = "java(organization.getProjects().size())")
     OrganizationResponse toResponse(Organization organization);
+
     List<OrganizationResponse> toResponseList(List<Organization> organizations);
 
     // Detailed response with owner & projects
@@ -33,7 +34,9 @@ public interface OrganizationMapper {
 
     // Create Request -> Entity
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "slug", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "projects", ignore = true)
     Organization toEntity(CreateOrganizationRequest request);
@@ -42,9 +45,10 @@ public interface OrganizationMapper {
     // Updates existing entity with only non-null fields
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "slug", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "projects", ignore = true)
     void updateEntityFromRequest(UpdateOrganizationRequest request, @MappingTarget Organization entity);
 }
-

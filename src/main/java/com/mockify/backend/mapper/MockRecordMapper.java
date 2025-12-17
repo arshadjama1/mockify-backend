@@ -19,12 +19,14 @@ public interface MockRecordMapper {
     @Mapping(target = "expired", expression = "java(isExpired(record))")
     @Mapping(target = "ttlMinutes", expression = "java(calculateTtl(record))")
     MockRecordResponse toResponse(MockRecord record);
+
     List<MockRecordResponse> toResponseList(List<MockRecord> records);
 
     // Create Request -> Entity
-    @Mapping(target = "id", ignore = true) //
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "mockSchema", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "expiresAt", ignore = true)
     MockRecord toEntity(CreateMockRecordRequest request);
 
@@ -33,6 +35,7 @@ public interface MockRecordMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "expiresAt", ignore = true)
     @Mapping(target = "mockSchema", ignore = true)
     void updateEntityFromRequest(UpdateMockRecordRequest request, @MappingTarget MockRecord entity);

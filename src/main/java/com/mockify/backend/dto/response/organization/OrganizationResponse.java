@@ -12,8 +12,10 @@ import java.util.UUID;
 public class OrganizationResponse {
     private UUID id;
     private String name;
+    private String slug;
     private UUID ownerId;
     private String ownerName;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private int projectCount;
 }

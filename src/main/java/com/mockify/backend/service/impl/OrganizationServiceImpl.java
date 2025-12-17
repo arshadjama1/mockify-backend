@@ -5,6 +5,7 @@ import com.mockify.backend.dto.request.organization.UpdateOrganizationRequest;
 import com.mockify.backend.dto.response.organization.OrganizationDetailResponse;
 import com.mockify.backend.dto.response.organization.OrganizationResponse;
 import com.mockify.backend.exception.BadRequestException;
+import com.mockify.backend.exception.DuplicateResourceException;
 import com.mockify.backend.exception.ResourceNotFoundException;
 import com.mockify.backend.exception.UnauthorizedException;
 import com.mockify.backend.mapper.OrganizationMapper;
@@ -14,6 +15,7 @@ import com.mockify.backend.repository.OrganizationRepository;
 import com.mockify.backend.repository.UserRepository;
 import com.mockify.backend.service.AccessControlService;
 import com.mockify.backend.service.OrganizationService;
+import com.mockify.backend.service.SlugService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     private final UserRepository userRepository;
     private final OrganizationMapper organizationMapper;
     private final AccessControlService accessControlService;
+    private final SlugService slugService;
 
     // Create new organization under current user
     @Transactional
@@ -41,6 +44,14 @@ public class OrganizationServiceImpl implements OrganizationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
+        // Generate slug from name
+        String slug = slugService.generateSlug(request.getName());
+
+        // Check global slug uniqueness (organizations must have globally unique slugs)
+        if (organizationRepository.existsBySlug(slug)) {
+            slug = slugService.generateUniqueSlug(slug);
+        }
+
         // Prevent duplicate organization name under same user
         boolean exists = organizationRepository.findByOwnerId(userId).stream()
                 .anyMatch(org -> org.getName().equalsIgnoreCase(request.getName()));
@@ -50,6 +61,7 @@ public class OrganizationServiceImpl implements OrganizationService {
 
         Organization organization = organizationMapper.toEntity(request);
         organization.setOwner(user);
+        organization.setSlug(slug);
 
         Organization saved = organizationRepository.save(organization);
         log.info("Organization '{}' created successfully (ID: {})", saved.getName(), saved.getId());
@@ -112,6 +124,16 @@ public class OrganizationServiceImpl implements OrganizationService {
         }
 
         organizationMapper.updateEntityFromRequest(request, organization);
+
+        // If name changed, update slug
+        if (request.getName() != null && !request.getName().equals(organization.getName())) {
+            String newSlug = slugService.generateSlug(request.getName());
+            if (organizationRepository.existsBySlug(newSlug)) {
+                throw new DuplicateResourceException("Organization slug already exists");
+            }
+            organization.setSlug(newSlug);
+        }
+
         Organization updated = organizationRepository.save(organization);
 
         log.info("Organization ID {} updated successfully", orgId);

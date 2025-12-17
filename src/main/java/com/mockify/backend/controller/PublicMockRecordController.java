@@ -44,4 +44,15 @@ public class PublicMockRecordController {
         List<MockRecordResponse> records = publicMockRecordService.getRecordsBySchemaId(schemaId);
         return ResponseEntity.ok(records);
     }
+
+    @GetMapping("/{orgSlug}/{projectSlug}/{schemaSlug}/records")
+    public ResponseEntity<List<MockRecordResponse>> getRecordsBySlug(
+            @PathVariable String orgSlug,
+            @PathVariable String projectSlug,
+            @PathVariable String schemaSlug) {
+
+        return ResponseEntity.ok(
+                publicMockRecordService.getRecordsBySlug(orgSlug, projectSlug, schemaSlug)
+        );
+    }
 }

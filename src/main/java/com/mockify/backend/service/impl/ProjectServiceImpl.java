@@ -5,6 +5,7 @@ import com.mockify.backend.dto.request.project.UpdateProjectRequest;
 import com.mockify.backend.dto.response.project.ProjectDetailResponse;
 import com.mockify.backend.dto.response.project.ProjectResponse;
 import com.mockify.backend.exception.BadRequestException;
+import com.mockify.backend.exception.DuplicateResourceException;
 import com.mockify.backend.exception.ResourceNotFoundException;
 import com.mockify.backend.mapper.ProjectMapper;
 import com.mockify.backend.model.Organization;
@@ -13,6 +14,7 @@ import com.mockify.backend.repository.OrganizationRepository;
 import com.mockify.backend.repository.ProjectRepository;
 import com.mockify.backend.service.AccessControlService;
 import com.mockify.backend.service.ProjectService;
+import com.mockify.backend.service.SlugService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final OrganizationRepository organizationRepository;
     private final ProjectMapper projectMapper;
     private final AccessControlService accessControlService;
+    private final SlugService slugService;
 
     @Override
     @Transactional
@@ -42,6 +45,14 @@ public class ProjectServiceImpl implements ProjectService {
         // Ownership check
         accessControlService.checkOrganizationAccess(userId, organization, "Organization");
 
+        // Generate slug from name
+        String slug = slugService.generateSlug(request.getName());
+
+        // Check slug uniqueness (organizations must have unique project-slugs)
+        if (projectRepository.existsBySlugAndOrganizationId(slug, request.getOrganizationId())) {
+            slug = slugService.generateUniqueSlug(slug);
+        }
+
         // Check for duplicate project name in same organization
         Project existing = projectRepository.findByNameAndOrganizationId(request.getName(), request.getOrganizationId());
         if (existing != null) {
@@ -50,8 +61,10 @@ public class ProjectServiceImpl implements ProjectService {
 
         Project project = projectMapper.toEntity(request);
         project.setOrganization(organization);
+        project.setSlug(slug);
 
         Project saved = projectRepository.save(project);
+
         log.info("Project '{}' created successfully by user {}", saved.getName(), userId);
         return projectMapper.toResponse(saved);
     }
@@ -102,6 +115,16 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         projectMapper.updateEntityFromRequest(request, project);
+
+        // If name changed, update slug
+        if (request.getName() != null && !request.getName().equals(project.getName())) {
+            String newSlug = slugService.generateSlug(request.getName());
+            if (projectRepository.existsBySlugAndOrganizationId(newSlug, project.getOrganization().getId())) {
+                throw new DuplicateResourceException("Project slug already exists in this organization");
+            }
+            project.setSlug(newSlug);
+        }
+
         Project updated = projectRepository.save(project);
         log.info("Project '{}' updated successfully by user {}", updated.getName(), userId);
 

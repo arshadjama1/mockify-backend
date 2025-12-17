@@ -12,27 +12,33 @@ import com.mockify.backend.mapper.MockSchemaMapper;
 import com.mockify.backend.model.MockSchema;
 import com.mockify.backend.model.Project;
 import com.mockify.backend.repository.MockSchemaRepository;
+import com.mockify.backend.repository.OrganizationRepository;
 import com.mockify.backend.repository.ProjectRepository;
 import com.mockify.backend.service.AccessControlService;
 import com.mockify.backend.service.MockSchemaService;
 import com.mockify.backend.service.MockValidatorService;
+import com.mockify.backend.service.SlugService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MockSchemaServiceImpl implements MockSchemaService {
 
     private final MockSchemaRepository mockSchemaRepository;
     private final ProjectRepository projectRepository;
+    private final OrganizationRepository organizationRepository;
     private final MockSchemaMapper mockSchemaMapper;
     private final ObjectMapper objectMapper;
     private final MockValidatorService mockValidatorService;
     private final AccessControlService accessControlService;
+    private final SlugService slugService;
 
     // Utility method to fetch project with ownership validation
     private Project getProjectWithAccessCheck(UUID projectId, UUID userId) {
@@ -67,11 +73,20 @@ public class MockSchemaServiceImpl implements MockSchemaService {
             throw new DuplicateResourceException("Schema with the same name already exists in this project");
         }
 
+        // Generate slug from name
+        String slug = slugService.generateSlug(request.getName());
+
+        // Check uniqueness within project
+        if (mockSchemaRepository.existsBySlugAndProjectId(slug, request.getProjectId())) {
+           slugService.generateUniqueSlug(slug);
+        }
+
         // Validate Mock Schema
         mockValidatorService.validateSchemaDefinition(request.getSchemaJson());
 
         MockSchema schema = mockSchemaMapper.toEntity(request);
         schema.setProject(project);
+        schema.setSlug(slug);
 
         MockSchema saved = mockSchemaRepository.save(schema);
         return mockSchemaMapper.toResponse(saved);
@@ -125,6 +140,16 @@ public class MockSchemaServiceImpl implements MockSchemaService {
         mockValidatorService.validateSchemaDefinition(request.getSchemaJson());
 
         mockSchemaMapper.updateEntityFromRequest(request, schema);
+
+        // If name changed, update slug
+        if (request.getName() != null && !request.getName().equals(schema.getName())) {
+            String newSlug = slugService.generateSlug(request.getName());
+            if (mockSchemaRepository.existsBySlugAndProjectId(newSlug, schema.getProject().getId())) {
+                throw new DuplicateResourceException("Schema slug already exists in this project");
+            }
+            schema.setSlug(newSlug);
+        }
+
         mockSchemaRepository.save(schema);
         return mockSchemaMapper.toResponse(schema);
     }
