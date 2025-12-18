@@ -14,10 +14,7 @@ import com.mockify.backend.model.Project;
 import com.mockify.backend.repository.MockSchemaRepository;
 import com.mockify.backend.repository.OrganizationRepository;
 import com.mockify.backend.repository.ProjectRepository;
-import com.mockify.backend.service.AccessControlService;
-import com.mockify.backend.service.MockSchemaService;
-import com.mockify.backend.service.MockValidatorService;
-import com.mockify.backend.service.SlugService;
+import com.mockify.backend.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +36,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
     private final MockValidatorService mockValidatorService;
     private final AccessControlService accessControlService;
     private final SlugService slugService;
+    private final EndpointService endpointService;
 
     // Utility method to fetch project with ownership validation
     private Project getProjectWithAccessCheck(UUID projectId, UUID userId) {
@@ -89,6 +87,8 @@ public class MockSchemaServiceImpl implements MockSchemaService {
         schema.setSlug(slug);
 
         MockSchema saved = mockSchemaRepository.save(schema);
+        endpointService.createEndpoint(saved);
+
         return mockSchemaMapper.toResponse(saved);
     }
 
@@ -142,12 +142,13 @@ public class MockSchemaServiceImpl implements MockSchemaService {
         mockSchemaMapper.updateEntityFromRequest(request, schema);
 
         // If name changed, update slug
-        if (request.getName() != null && !request.getName().equals(schema.getName())) {
+        if (request.getName() != null && request.getName().equals(schema.getName())) {
             String newSlug = slugService.generateSlug(request.getName());
             if (mockSchemaRepository.existsBySlugAndProjectId(newSlug, schema.getProject().getId())) {
                 throw new DuplicateResourceException("Schema slug already exists in this project");
             }
             schema.setSlug(newSlug);
+            endpointService.updateEndpointSlug(schema.getId(), "schema", newSlug);
         }
 
         mockSchemaRepository.save(schema);

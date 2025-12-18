@@ -13,6 +13,7 @@ import com.mockify.backend.model.Project;
 import com.mockify.backend.repository.OrganizationRepository;
 import com.mockify.backend.repository.ProjectRepository;
 import com.mockify.backend.service.AccessControlService;
+import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.ProjectService;
 import com.mockify.backend.service.SlugService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectMapper projectMapper;
     private final AccessControlService accessControlService;
     private final SlugService slugService;
+    private final EndpointService endpointService;
 
     @Override
     @Transactional
@@ -64,6 +66,7 @@ public class ProjectServiceImpl implements ProjectService {
         project.setSlug(slug);
 
         Project saved = projectRepository.save(project);
+        endpointService.createEndpoint(saved);
 
         log.info("Project '{}' created successfully by user {}", saved.getName(), userId);
         return projectMapper.toResponse(saved);
@@ -117,12 +120,13 @@ public class ProjectServiceImpl implements ProjectService {
         projectMapper.updateEntityFromRequest(request, project);
 
         // If name changed, update slug
-        if (request.getName() != null && !request.getName().equals(project.getName())) {
+        if (request.getName() != null && request.getName().equals(project.getName())) {
             String newSlug = slugService.generateSlug(request.getName());
             if (projectRepository.existsBySlugAndOrganizationId(newSlug, project.getOrganization().getId())) {
                 throw new DuplicateResourceException("Project slug already exists in this organization");
             }
             project.setSlug(newSlug);
+            endpointService.updateEndpointSlug(project.getId(), "project", newSlug);
         }
 
         Project updated = projectRepository.save(project);

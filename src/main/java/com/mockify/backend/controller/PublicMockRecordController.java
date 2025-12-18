@@ -1,6 +1,7 @@
 package com.mockify.backend.controller;
 
 import com.mockify.backend.dto.response.record.MockRecordResponse;
+import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.PublicMockRecordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import java.util.UUID;
 public class PublicMockRecordController {
 
     private final PublicMockRecordService publicMockRecordService;
+    private final EndpointService endpointService;
 
     /**
      * Get a record by ID (Public/Free User)
@@ -45,6 +47,7 @@ public class PublicMockRecordController {
         return ResponseEntity.ok(records);
     }
 
+    // Slug-based public endpoint example (using direct slug lookups)
     @GetMapping("/{orgSlug}/{projectSlug}/{schemaSlug}/records")
     public ResponseEntity<List<MockRecordResponse>> getRecordsBySlug(
             @PathVariable String orgSlug,
@@ -54,5 +57,27 @@ public class PublicMockRecordController {
         return ResponseEntity.ok(
                 publicMockRecordService.getRecordsBySlug(orgSlug, projectSlug, schemaSlug)
         );
+    }
+
+
+    // SLUG-BASED ROUTES
+
+    @GetMapping("/schemas/{schemaSlug}/records/{recordId}")
+    public ResponseEntity getRecordById(
+            @PathVariable String schemaSlug,
+            @PathVariable UUID recordId) {
+        UUID schemaId = endpointService.resolveSchemaId(schemaSlug);
+        log.info("Public user fetching recordId={} for schemaId={}", recordId, schemaId);
+        MockRecordResponse records = publicMockRecordService.getRecordById(schemaId, recordId);
+        return ResponseEntity.ok(records);
+    }
+
+    @GetMapping("/schemas/{schemaSlug}/records")
+    public ResponseEntity<List> getRecordsBySchema(
+            @PathVariable String schemaSlug) {
+        UUID schemaId = endpointService.resolveSchemaId(schemaSlug);
+        log.info("Public user fetching all records for schemaId={}", schemaId);
+        List records = publicMockRecordService.getRecordsBySchemaId(schemaId);
+        return ResponseEntity.ok(records);
     }
 }

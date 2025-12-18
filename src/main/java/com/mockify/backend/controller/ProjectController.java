@@ -4,6 +4,7 @@ import com.mockify.backend.dto.request.project.CreateProjectRequest;
 import com.mockify.backend.dto.request.project.UpdateProjectRequest;
 import com.mockify.backend.dto.response.project.ProjectDetailResponse;
 import com.mockify.backend.dto.response.project.ProjectResponse;
+import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.ProjectService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,6 +27,7 @@ import java.util.UUID;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final EndpointService endpointService;
 
     //  Create a new project under an organization
     @PostMapping("/projects")
@@ -99,5 +101,70 @@ public class ProjectController {
         long count = projectService.countProjects();
         log.info("Total number of projects in the system: {}", count);
         return ResponseEntity.ok(count);
+    }
+
+    // SLUG-BASED ROUTES
+
+    @GetMapping("/projects/slug/{projectSlug}")
+    public ResponseEntity<ProjectDetailResponse> getProjectBySlug(
+            @PathVariable String projectSlug,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID projectId = endpointService.resolveProjectId(projectSlug);
+
+        log.debug("User {} fetching project {}", userId, projectId);
+
+        ProjectDetailResponse project =
+                projectService.getProjectById(userId, projectId);
+
+        return ResponseEntity.ok(project);
+    }
+
+    @GetMapping("/organizations/slug/{orgSlug}/projects")
+    public ResponseEntity<List<ProjectResponse>> getProjectsByOrganizationSlug(
+            @PathVariable String orgSlug,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID organizationId = endpointService.resolveOrganizationId(orgSlug);
+
+        log.debug("User {} fetching projects under organization {}", userId, organizationId);
+
+        List<ProjectResponse> projects =
+                projectService.getProjectsByOrganizationId(userId, organizationId);
+
+        return ResponseEntity.ok(projects);
+    }
+
+    @PutMapping("/projects/slug/{projectSlug}")
+    public ResponseEntity<ProjectResponse> updateProjectBySlug(
+            @PathVariable String projectSlug,
+            @Valid @RequestBody UpdateProjectRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID projectId = endpointService.resolveProjectId(projectSlug);
+
+        log.info("User {} updating project {}", userId, projectId);
+
+        ProjectResponse updated =
+                projectService.updateProject(userId, projectId, request);
+
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/projects/slug/{projectSlug}")
+    public ResponseEntity<Void> deleteProjectBySlug(
+            @PathVariable String projectSlug,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID projectId = endpointService.resolveProjectId(projectSlug);
+
+        log.warn("User {} deleting project {}", userId, projectId);
+
+        projectService.deleteProject(userId, projectId);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -14,6 +14,7 @@ import com.mockify.backend.model.User;
 import com.mockify.backend.repository.OrganizationRepository;
 import com.mockify.backend.repository.UserRepository;
 import com.mockify.backend.service.AccessControlService;
+import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.OrganizationService;
 import com.mockify.backend.service.SlugService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     private final OrganizationMapper organizationMapper;
     private final AccessControlService accessControlService;
     private final SlugService slugService;
+    private final EndpointService endpointService;
 
     // Create new organization under current user
     @Transactional
@@ -64,8 +66,9 @@ public class OrganizationServiceImpl implements OrganizationService {
         organization.setSlug(slug);
 
         Organization saved = organizationRepository.save(organization);
-        log.info("Organization '{}' created successfully (ID: {})", saved.getName(), saved.getId());
+        endpointService.createEndpoint(saved);
 
+        log.info("Organization '{}' created successfully (ID: {})", saved.getName(), saved.getId());
         return organizationMapper.toResponse(saved);
     }
 
@@ -126,12 +129,13 @@ public class OrganizationServiceImpl implements OrganizationService {
         organizationMapper.updateEntityFromRequest(request, organization);
 
         // If name changed, update slug
-        if (request.getName() != null && !request.getName().equals(organization.getName())) {
+        if (request.getName() != null && request.getName().equals(organization.getName())) {
             String newSlug = slugService.generateSlug(request.getName());
             if (organizationRepository.existsBySlug(newSlug)) {
                 throw new DuplicateResourceException("Organization slug already exists");
             }
             organization.setSlug(newSlug);
+            endpointService.updateEndpointSlug(organization.getId(), "organization", newSlug);
         }
 
         Organization updated = organizationRepository.save(organization);
