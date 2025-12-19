@@ -35,7 +35,7 @@ public class MockSchemaController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        log.info("User {} creating schema '{}' under project {}", userId, request.getName(), request.getProjectId());
+        log.info("User {} creating schema '{}' under project {}", userId, request.getName(), project);
 
         MockSchemaResponse response = mockSchemaService.createSchema(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -51,7 +51,7 @@ public class MockSchemaController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchemaId(schema);
+        UUID schemaId = endpointService.resolveSchema(project, schema);
         log.debug("User {} fetching schema {}", userId, schemaId);
 
         MockSchemaDetailResponse response = mockSchemaService.getSchemaById(userId, schemaId);
@@ -69,7 +69,7 @@ public class MockSchemaController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchemaId(schema);
+        UUID schemaId = endpointService.resolveSchema(project, schema);
         log.info("User {} updating schema {}", userId, schemaId);
 
         MockSchemaResponse response = mockSchemaService.updateSchema(userId, schemaId, request);
@@ -86,7 +86,7 @@ public class MockSchemaController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchemaId(schema);
+        UUID schemaId = endpointService.resolveSchema(project, schema);
         log.warn("User {} deleting schema {}", userId, schemaId);
 
         mockSchemaService.deleteSchema(userId, schemaId);
@@ -96,13 +96,14 @@ public class MockSchemaController {
     /**
      * Get all schemas under a project
      */
-    @GetMapping("/{project}/schemas")
+    @GetMapping("/{org}/{project}/schemas")
     public ResponseEntity<List<MockSchemaResponse>> getSchemasByProject(
+            @PathVariable String org,
             @PathVariable String project,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID projectId = endpointService.resolveProjectId(project);
+        UUID projectId = endpointService.resolveProject(org, project);
         log.debug("User {} fetching schemas under project {}", userId, projectId);
 
         List<MockSchemaResponse> schemas = mockSchemaService.getSchemasByProjectId(userId, projectId);

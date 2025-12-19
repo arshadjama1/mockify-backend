@@ -37,7 +37,7 @@ public class MockRecordController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchemaId(schema);
+        UUID schemaId = endpointService.resolveSchema(project, schema);
         log.info("User {} creating new mock record under schema {}", userId, schemaId);
 
         MockRecordResponse created = mockRecordService.createRecord(userId, schemaId, request);
@@ -53,7 +53,7 @@ public class MockRecordController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchemaId(schema);
+        UUID schemaId = endpointService.resolveSchema(project, schema);
         log.info("User {} bulk creating {} records under schema {}", userId, requests.size(), schemaId);
 
         List<MockRecordResponse> created = mockRecordService.createRecordsBulk(userId, schemaId, requests);
@@ -83,7 +83,7 @@ public class MockRecordController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchemaId(schema);
+        UUID schemaId = endpointService.resolveSchema(project, schema);
         log.debug("User {} fetching all records under schema {}", userId, schemaId);
 
         List<MockRecordResponse> records = mockRecordService.getRecordsBySchemaId(userId, schemaId);

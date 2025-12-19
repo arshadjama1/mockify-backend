@@ -9,6 +9,10 @@ import java.util.UUID;
 
 @Repository
 public interface EndpointRepository extends JpaRepository<Endpoint, UUID> {
+    Optional<Endpoint> findByOrganizationIdAndSlug(UUID orgId, String slug);
+
+    Optional<Endpoint> findByProjectIdAndSlug(UUID projectId, String slug);
+
     Optional<Endpoint> findBySlug(String slug);
     Optional<Endpoint> findByOrganizationId(UUID organizationId);
     Optional<Endpoint> findByProjectId(UUID projectId);

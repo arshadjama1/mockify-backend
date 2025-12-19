@@ -37,7 +37,7 @@ public class ProjectController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        log.info("User {} creating new project '{}' under organization {}", userId, request.getName(), request.getOrganizationId());
+        log.info("User {} creating new project '{}' under organization {}", userId, request.getName(), org);
 
         ProjectResponse created = projectService.createProject(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -51,7 +51,7 @@ public class ProjectController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID projectId = endpointService.resolveProjectId(project);
+        UUID projectId = endpointService.resolveProject(org, project);
 
         log.debug("User {} fetching project details for ID {}", userId, projectId);
 
@@ -63,12 +63,12 @@ public class ProjectController {
     @PutMapping("/{org}/{project}")
     public ResponseEntity<ProjectResponse> updateProject(
             @PathVariable String org,
-            @PathVariable String projectSlug,
+            @PathVariable String project,
             @Valid @RequestBody UpdateProjectRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID projectId = endpointService.resolveProjectId(projectSlug);
+        UUID projectId = endpointService.resolveProject(org, project);
         log.info("User {} updating project {}", userId, projectId);
 
         ProjectResponse updated = projectService.updateProject(userId, projectId, request);
@@ -83,7 +83,7 @@ public class ProjectController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID projectId = endpointService.resolveProjectId(project);
+        UUID projectId = endpointService.resolveProject(org, project);
         log.warn("User {} deleting project ID {}", userId, projectId);
 
         projectService.deleteProject(userId, projectId);
@@ -97,7 +97,7 @@ public class ProjectController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID organizationId = endpointService.resolveOrganizationId(org);
+        UUID organizationId = endpointService.resolveOrganization(org);
 
         log.debug("User {} fetching projects under org {}", userId, organizationId);
 

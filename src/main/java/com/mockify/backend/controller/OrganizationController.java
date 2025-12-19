@@ -24,7 +24,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api")
 @Tag(name = "Organization")
-
 public class OrganizationController {
 
     private final OrganizationService organizationService;
@@ -50,7 +49,7 @@ public class OrganizationController {
             @PathVariable String org) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID orgId = endpointService.resolveOrganizationId(org);
+        UUID orgId = endpointService.resolveOrganization(org);
 
         log.debug("User {} fetching organization {}", userId, orgId);
 
@@ -78,7 +77,7 @@ public class OrganizationController {
             @Valid @RequestBody UpdateOrganizationRequest request) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID orgId = endpointService.resolveOrganizationId(org);
+        UUID orgId = endpointService.resolveOrganization(org);
 
         OrganizationResponse updated =
                 organizationService.updateOrganization(userId, orgId, request);
@@ -93,7 +92,7 @@ public class OrganizationController {
             @PathVariable String org) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID orgId = endpointService.resolveOrganizationId(org);
+        UUID orgId = endpointService.resolveOrganization(org);
 
         organizationService.deleteOrganization(userId, orgId);
         return ResponseEntity.noContent().build();

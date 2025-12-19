@@ -95,23 +95,26 @@ public class EndpointServiceImpl implements EndpointService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public UUID resolveOrganizationId(String slug) {
-        Endpoint endpoint = endpointRepository.findBySlug(slug)
-                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + slug));
+    public UUID resolveOrganization(String orgSlug) {
+        Endpoint org = endpointRepository.findBySlug(orgSlug)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgSlug));
 
-        if (endpoint.getOrganization() == null) {
-            throw new ResourceNotFoundException("Slug does not point to an organization");
-        }
-
-        return endpoint.getOrganization().getId();
+        return org.getOrganization().getId();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public UUID resolveProjectId(String slug) {
-        Endpoint endpoint = endpointRepository.findBySlug(slug)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + slug));
+    public UUID resolveProject(String orgSlug, String projectSlug) {
+
+        UUID orgId = resolveOrganization(orgSlug);
+
+        Endpoint endpoint = endpointRepository
+                .findByOrganizationIdAndSlug(orgId, projectSlug)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Project not found: " + projectSlug + " under org " + orgSlug
+                        )
+                );
 
         if (endpoint.getProject() == null) {
             throw new ResourceNotFoundException("Slug does not point to a project");
@@ -122,9 +125,17 @@ public class EndpointServiceImpl implements EndpointService {
 
     @Override
     @Transactional(readOnly = true)
-    public UUID resolveSchemaId(String slug) {
-        Endpoint endpoint = endpointRepository.findBySlug(slug)
-                .orElseThrow(() -> new ResourceNotFoundException("Schema not found: " + slug));
+    public UUID resolveSchema(String projectSlug, String schemaSlug) {
+
+        UUID projectId = resolveProject(projectSlug, schemaSlug);
+
+        Endpoint endpoint = endpointRepository
+                .findByProjectIdAndSlug(projectId, schemaSlug)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Schema not found: " + schemaSlug + " under project " + projectSlug
+                        )
+                );
 
         if (endpoint.getSchema() == null) {
             throw new ResourceNotFoundException("Slug does not point to a schema");

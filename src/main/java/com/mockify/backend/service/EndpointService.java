@@ -9,7 +9,10 @@ public interface EndpointService {
     void createEndpoint(MockSchema schema);
     void updateEndpointSlug(UUID resourceId, String resourceType, String newSlug);
     void deleteEndpoint(UUID resourceId, String resourceType);
-    UUID resolveOrganizationId(String slug);
-    UUID resolveProjectId(String slug);
-    UUID resolveSchemaId(String slug);
+
+    UUID resolveOrganization(String orgSlug);
+
+    UUID resolveProject(String orgSlug, String projectSlug);
+
+    UUID resolveSchema(String projectSlug, String schemaSlug);
 }
