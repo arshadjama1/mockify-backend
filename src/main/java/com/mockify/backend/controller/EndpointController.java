@@ -10,7 +10,7 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/endpoints")
+@RequestMapping("/api/endpoints")
 public class EndpointController {
 
     private final EndpointRepository endpointRepository;

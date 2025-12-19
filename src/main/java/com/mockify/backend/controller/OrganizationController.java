@@ -22,7 +22,7 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/organizations")
+@RequestMapping("/api")
 @Tag(name = "Organization")
 
 public class OrganizationController {
@@ -31,7 +31,7 @@ public class OrganizationController {
     private final EndpointService endpointService;
 
     // Create organization for logged-in user
-    @PostMapping
+    @PostMapping("/organizations")
     public ResponseEntity<OrganizationResponse> createOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CreateOrganizationRequest request) {
@@ -44,18 +44,24 @@ public class OrganizationController {
     }
 
     // Get details of a specific organization
-    @GetMapping("/{orgId}")
+    @GetMapping("/organizations/{org}")
     public ResponseEntity<OrganizationDetailResponse> getOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable UUID orgId) {
+            @PathVariable String org) {
+
         UUID userId = UUID.fromString(userDetails.getUsername());
-        log.debug("Fetching organization: {} for user: {}", orgId, userId);
-        OrganizationDetailResponse org = organizationService.getOrganizationDetail(orgId, userId);
-        return ResponseEntity.ok(org);
+        UUID orgId = endpointService.resolveOrganizationId(org);
+
+        log.debug("User {} fetching organization {}", userId, orgId);
+
+        OrganizationDetailResponse response =
+                organizationService.getOrganizationDetail(orgId, userId);
+
+        return ResponseEntity.ok(response);
     }
 
     // Get all organizations for current user
-    @GetMapping
+    @GetMapping("/organizations")
     public ResponseEntity<List<OrganizationResponse>> getMyOrganizations(
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -65,53 +71,14 @@ public class OrganizationController {
     }
 
     // Update organization
-    @PutMapping("/{orgId}")
+    @PutMapping("/organizations/{org}")
     public ResponseEntity<OrganizationResponse> updateOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable UUID orgId,
+            @PathVariable String org,
             @Valid @RequestBody UpdateOrganizationRequest request) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        OrganizationResponse updated = organizationService.updateOrganization(userId, orgId, request);
-        return ResponseEntity.ok(updated);
-    }
-
-    // Delete organization
-    @DeleteMapping("/{orgId}")
-    public ResponseEntity<Void> deleteOrganization(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable UUID orgId) {
-
-        UUID userId = UUID.fromString(userDetails.getUsername());
-        organizationService.deleteOrganization(userId, orgId);
-        return ResponseEntity.noContent().build();
-    }
-
-    // SLUG-BASED ROUTES
-    @GetMapping("/slug/{orgSlug}")
-    public ResponseEntity<OrganizationDetailResponse> getOrganizationBySlug(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable String orgSlug) {
-
-        UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID orgId = endpointService.resolveOrganizationId(orgSlug);
-
-        log.debug("Fetching organization {} for user {}", orgId, userId);
-
-        OrganizationDetailResponse org =
-                organizationService.getOrganizationDetail(orgId, userId);
-
-        return ResponseEntity.ok(org);
-    }
-
-    @PutMapping("/slug/{orgSlug}")
-    public ResponseEntity<OrganizationResponse> updateOrganizationBySlug(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable String orgSlug,
-            @Valid @RequestBody UpdateOrganizationRequest request) {
-
-        UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID orgId = endpointService.resolveOrganizationId(orgSlug);
+        UUID orgId = endpointService.resolveOrganizationId(org);
 
         OrganizationResponse updated =
                 organizationService.updateOrganization(userId, orgId, request);
@@ -119,13 +86,14 @@ public class OrganizationController {
         return ResponseEntity.ok(updated);
     }
 
-    @DeleteMapping("/slug/{orgSlug}")
-    public ResponseEntity<Void> deleteOrganizationBySlug(
+    // Delete organization
+    @DeleteMapping("/organizations/{org}")
+    public ResponseEntity<Void> deleteOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable String orgSlug) {
+            @PathVariable String org) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID orgId = endpointService.resolveOrganizationId(orgSlug);
+        UUID orgId = endpointService.resolveOrganizationId(org);
 
         organizationService.deleteOrganization(userId, orgId);
         return ResponseEntity.noContent().build();

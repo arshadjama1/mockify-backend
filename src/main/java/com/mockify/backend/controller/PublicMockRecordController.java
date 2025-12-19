@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/mock")
+@RequestMapping("/api/mock")
 @RequiredArgsConstructor
 @Slf4j
 public class PublicMockRecordController {
@@ -23,61 +23,28 @@ public class PublicMockRecordController {
     /**
      * Get a record by ID (Public/Free User)
      */
-    @GetMapping("/schemas/{schemaId}/records/{recordId}")
-    public ResponseEntity<MockRecordResponse> getRecordById(
-            @PathVariable UUID schemaId,
+    @GetMapping("/{schema}/records/{recordId}")
+    public ResponseEntity<MockRecordResponse> getRecord(
+            @PathVariable String schema,
             @PathVariable UUID recordId) {
 
-        log.info("Public user fetching recordId={} for schemaId={}", recordId, schemaId);
+        log.info("Public user fetching recordId={} for schemaId={}", recordId, schema);
 
-        MockRecordResponse records = publicMockRecordService.getRecordById(schemaId, recordId);
-        return ResponseEntity.ok(records);
+        UUID schemaId = endpointService.resolveSchemaId(schema);
+        MockRecordResponse record = publicMockRecordService.getRecordById(schemaId, recordId);
+        return ResponseEntity.ok(record);
     }
 
     /**
      * Get all records under a schema (Public/Free User)
      */
-    @GetMapping("/schemas/{schemaId}/records")
-    public ResponseEntity<List<MockRecordResponse>> getRecordsBySchema(
-            @PathVariable UUID schemaId) {
+    @GetMapping("/{schema}/records")
+    public ResponseEntity<List<MockRecordResponse>> getRecords(@PathVariable String schema) {
 
-        log.info("Public user fetching all records for schemaId={}", schemaId);
+        log.info("Public user fetching all records for schemaId={}", schema);
 
+        UUID schemaId = endpointService.resolveSchemaId(schema);
         List<MockRecordResponse> records = publicMockRecordService.getRecordsBySchemaId(schemaId);
-        return ResponseEntity.ok(records);
-    }
-
-    // Slug-based public endpoint example (using direct slug lookups)
-    @GetMapping("/{orgSlug}/{projectSlug}/{schemaSlug}/records")
-    public ResponseEntity<List<MockRecordResponse>> getRecordsBySlug(
-            @PathVariable String orgSlug,
-            @PathVariable String projectSlug,
-            @PathVariable String schemaSlug) {
-
-        return ResponseEntity.ok(
-                publicMockRecordService.getRecordsBySlug(orgSlug, projectSlug, schemaSlug)
-        );
-    }
-
-
-    // SLUG-BASED ROUTES
-
-    @GetMapping("/schemas/{schemaSlug}/records/{recordId}")
-    public ResponseEntity getRecordById(
-            @PathVariable String schemaSlug,
-            @PathVariable UUID recordId) {
-        UUID schemaId = endpointService.resolveSchemaId(schemaSlug);
-        log.info("Public user fetching recordId={} for schemaId={}", recordId, schemaId);
-        MockRecordResponse records = publicMockRecordService.getRecordById(schemaId, recordId);
-        return ResponseEntity.ok(records);
-    }
-
-    @GetMapping("/schemas/{schemaSlug}/records")
-    public ResponseEntity<List> getRecordsBySchema(
-            @PathVariable String schemaSlug) {
-        UUID schemaId = endpointService.resolveSchemaId(schemaSlug);
-        log.info("Public user fetching all records for schemaId={}", schemaId);
-        List records = publicMockRecordService.getRecordsBySchemaId(schemaId);
         return ResponseEntity.ok(records);
     }
 }

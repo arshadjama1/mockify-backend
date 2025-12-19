@@ -8,6 +8,7 @@ import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.MockSchemaService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,120 +18,94 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1")
+@RequestMapping("/api")
 @Tag(name = "Mock Schema")
 public class MockSchemaController {
 
     private final MockSchemaService mockSchemaService;
     private final EndpointService endpointService;
 
-    @PostMapping("/schemas")
+    @PostMapping("/{project}/schemas")
     public ResponseEntity<MockSchemaResponse> createSchema(
+            @PathVariable String project,
             @RequestBody CreateMockSchemaRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
+        log.info("User {} creating schema '{}' under project {}", userId, request.getName(), request.getProjectId());
+
         MockSchemaResponse response = mockSchemaService.createSchema(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping("/projects/{projectId}/schemas")
-    public ResponseEntity<List<MockSchemaResponse>> getSchemasByProject(
-            @PathVariable UUID projectId,
+    /**
+     * Get schema details
+     */
+    @GetMapping("/{project}/{schema}")
+    public ResponseEntity<MockSchemaDetailResponse> getSchema(
+            @PathVariable String project,
+            @PathVariable String schema,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        List<MockSchemaResponse> schemas = mockSchemaService.getSchemasByProjectId(userId, projectId);
-        return ResponseEntity.ok(schemas);
-    }
+        UUID schemaId = endpointService.resolveSchemaId(schema);
+        log.debug("User {} fetching schema {}", userId, schemaId);
 
-    @GetMapping("/schemas/{schemaId}")
-    public ResponseEntity<MockSchemaDetailResponse> getSchemaById(
-            @PathVariable UUID schemaId,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        UUID userId = UUID.fromString(userDetails.getUsername());
         MockSchemaDetailResponse response = mockSchemaService.getSchemaById(userId, schemaId);
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/schemas/{schemaId}")
+    /**
+     * Update schema
+     */
+    @PutMapping("/{project}/{schema}")
     public ResponseEntity<MockSchemaResponse> updateSchema(
-            @PathVariable UUID schemaId,
+            @PathVariable String project,
+            @PathVariable String schema,
             @RequestBody UpdateMockSchemaRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID schemaId = endpointService.resolveSchemaId(schema);
+        log.info("User {} updating schema {}", userId, schemaId);
+
         MockSchemaResponse response = mockSchemaService.updateSchema(userId, schemaId, request);
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/schemas/{schemaId}")
+    /**
+     * Delete schema
+     */
+    @DeleteMapping("/{project}/{schema}")
     public ResponseEntity<Void> deleteSchema(
-            @PathVariable UUID schemaId,
+            @PathVariable String project,
+            @PathVariable String schema,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID schemaId = endpointService.resolveSchemaId(schema);
+        log.warn("User {} deleting schema {}", userId, schemaId);
+
         mockSchemaService.deleteSchema(userId, schemaId);
         return ResponseEntity.noContent().build();
     }
 
-    // SLUG-BASED ROUTES
-
-    @GetMapping("/projects/slug/{projectSlug}/schemas")
-    public ResponseEntity<List<MockSchemaResponse>> getSchemasByProjectSlug(
-            @PathVariable String projectSlug,
+    /**
+     * Get all schemas under a project
+     */
+    @GetMapping("/{project}/schemas")
+    public ResponseEntity<List<MockSchemaResponse>> getSchemasByProject(
+            @PathVariable String project,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID projectId = endpointService.resolveProjectId(projectSlug);
+        UUID projectId = endpointService.resolveProjectId(project);
+        log.debug("User {} fetching schemas under project {}", userId, projectId);
 
-        List<MockSchemaResponse> schemas =
-                mockSchemaService.getSchemasByProjectId(userId, projectId);
-
+        List<MockSchemaResponse> schemas = mockSchemaService.getSchemasByProjectId(userId, projectId);
         return ResponseEntity.ok(schemas);
-    }
-
-    @GetMapping("/schemas/slug/{schemaSlug}")
-    public ResponseEntity<MockSchemaDetailResponse> getSchemaBySlug(
-            @PathVariable String schemaSlug,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchemaId(schemaSlug);
-
-        MockSchemaDetailResponse response =
-                mockSchemaService.getSchemaById(userId, schemaId);
-
-        return ResponseEntity.ok(response);
-    }
-
-    @PutMapping("/schemas/slug/{schemaSlug}")
-    public ResponseEntity<MockSchemaResponse> updateSchemaBySlug(
-            @PathVariable String schemaSlug,
-            @RequestBody UpdateMockSchemaRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchemaId(schemaSlug);
-
-        MockSchemaResponse response =
-                mockSchemaService.updateSchema(userId, schemaId, request);
-
-        return ResponseEntity.ok(response);
-    }
-
-    @DeleteMapping("/schemas/slug/{schemaSlug}")
-    public ResponseEntity<Void> deleteSchemaBySlug(
-            @PathVariable String schemaSlug,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchemaId(schemaSlug);
-
-        mockSchemaService.deleteSchema(userId, schemaId);
-        return ResponseEntity.noContent().build();
     }
 }
