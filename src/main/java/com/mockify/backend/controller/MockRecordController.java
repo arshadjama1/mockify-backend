@@ -3,6 +3,7 @@ package com.mockify.backend.controller;
 import com.mockify.backend.dto.request.record.CreateMockRecordRequest;
 import com.mockify.backend.dto.request.record.UpdateMockRecordRequest;
 import com.mockify.backend.dto.response.record.MockRecordResponse;
+import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.MockRecordService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,20 +21,23 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1")
+@RequestMapping("/api")
 @Tag(name = "Mock Record")
 public class MockRecordController {
 
     private final MockRecordService mockRecordService;
+    private final EndpointService endpointService;
 
     // Create a new mock record
-    @PostMapping("/schemas/{schemaId}/records")
+    @PostMapping("/{project}/{schema}/records")
     public ResponseEntity<MockRecordResponse> createRecord(
-            @PathVariable UUID schemaId,
+            @PathVariable String project,
+            @PathVariable String schema,
             @Valid @RequestBody CreateMockRecordRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID schemaId = endpointService.resolveSchema(project, schema);
         log.info("User {} creating new mock record under schema {}", userId, schemaId);
 
         MockRecordResponse created = mockRecordService.createRecord(userId, schemaId, request);
@@ -41,22 +45,26 @@ public class MockRecordController {
     }
 
     // Create multiple records in bulk
-    @PostMapping("/schemas/{schemaId}/records/bulk")
+    @PostMapping("/{project}/{schema}/records/bulk")
     public ResponseEntity<List<MockRecordResponse>> createRecordsBulk(
-            @PathVariable UUID schemaId,
+            @PathVariable String project,
+            @PathVariable String schema,
             @Valid @RequestBody List<CreateMockRecordRequest> requests,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        log.info("User {} bulk creating {} records", userId, requests.size());
+        UUID schemaId = endpointService.resolveSchema(project, schema);
+        log.info("User {} bulk creating {} records under schema {}", userId, requests.size(), schemaId);
 
         List<MockRecordResponse> created = mockRecordService.createRecordsBulk(userId, schemaId, requests);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     // Get a record by ID
-    @GetMapping("/records/{recordId}")
+    @GetMapping("/{project}/{schema}/records/{recordId}")
     public ResponseEntity<MockRecordResponse> getRecordById(
+            @PathVariable String project,
+            @PathVariable String schema,
             @PathVariable UUID recordId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -68,12 +76,14 @@ public class MockRecordController {
     }
 
     // Get all records under a specific schema
-    @GetMapping("/schemas/{schemaId}/records")
-    public ResponseEntity<List<MockRecordResponse>> getRecordsBySchema(
-            @PathVariable UUID schemaId,
+    @GetMapping("/{project}/{schema}/records")
+    public ResponseEntity<List<MockRecordResponse>> getRecords(
+            @PathVariable String project,
+            @PathVariable String schema,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID schemaId = endpointService.resolveSchema(project, schema);
         log.debug("User {} fetching all records under schema {}", userId, schemaId);
 
         List<MockRecordResponse> records = mockRecordService.getRecordsBySchemaId(userId, schemaId);
@@ -81,8 +91,10 @@ public class MockRecordController {
     }
 
     // Update an existing mock record
-    @PutMapping("/records/{recordId}")
+    @PutMapping("/{project}/{schema}/records/{recordId}")
     public ResponseEntity<MockRecordResponse> updateRecord(
+            @PathVariable String project,
+            @PathVariable String schema,
             @PathVariable UUID recordId,
             @Valid @RequestBody UpdateMockRecordRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -95,8 +107,10 @@ public class MockRecordController {
     }
 
     // Delete a record by ID
-    @DeleteMapping("/records/{recordId}")
+    @DeleteMapping("/{project}/{schema}/records/{recordId}")
     public ResponseEntity<Void> deleteRecord(
+            @PathVariable String project,
+            @PathVariable String schema,
             @PathVariable UUID recordId,
             @AuthenticationPrincipal UserDetails userDetails) {
 

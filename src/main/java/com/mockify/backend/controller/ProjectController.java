@@ -4,6 +4,7 @@ import com.mockify.backend.dto.request.project.CreateProjectRequest;
 import com.mockify.backend.dto.request.project.UpdateProjectRequest;
 import com.mockify.backend.dto.response.project.ProjectDetailResponse;
 import com.mockify.backend.dto.response.project.ProjectResponse;
+import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.ProjectService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,83 +22,88 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1")
+@RequestMapping("/api")
 @Tag(name = "Project")
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final EndpointService endpointService;
 
     //  Create a new project under an organization
-    @PostMapping("/projects")
+    @PostMapping("/{org}/projects")
     public ResponseEntity<ProjectResponse> createProject(
+            @PathVariable String org,
             @Valid @RequestBody CreateProjectRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        log.info("User {} creating new project '{}' under organization {}", userId, request.getName(), request.getOrganizationId());
+        log.info("User {} creating new project '{}' under organization {}", userId, request.getName(), org);
 
         ProjectResponse created = projectService.createProject(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    //  Get a project by ID
-    @GetMapping("/projects/{projectId}")
-    public ResponseEntity<ProjectDetailResponse> getProjectById(
-            @PathVariable UUID projectId,
+    //  Get a single project details
+    @GetMapping("/{org}/{project}")
+    public ResponseEntity<ProjectDetailResponse> getProject(
+            @PathVariable String org,
+            @PathVariable String project,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID projectId = endpointService.resolveProject(org, project);
+
         log.debug("User {} fetching project details for ID {}", userId, projectId);
 
-        ProjectDetailResponse project = projectService.getProjectById(userId, projectId);
-        return ResponseEntity.ok(project);
-    }
-
-    //  Get all projects under a specific organization
-    @GetMapping("/organizations/{organizationId}/projects")
-    public ResponseEntity<List<ProjectResponse>> getProjectsByOrganization(
-            @PathVariable UUID organizationId,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        UUID userId = UUID.fromString(userDetails.getUsername());
-        log.debug("User {} fetching all projects under organization {}", userId, organizationId);
-
-        List<ProjectResponse> projects = projectService.getProjectsByOrganizationId(userId, organizationId);
-        return ResponseEntity.ok(projects);
+        ProjectDetailResponse response = projectService.getProjectById(userId, projectId);
+        return ResponseEntity.ok(response);
     }
 
     // Update an existing project
-    @PutMapping("/projects/{projectId}")
+    @PutMapping("/{org}/{project}")
     public ResponseEntity<ProjectResponse> updateProject(
-            @PathVariable UUID projectId,
+            @PathVariable String org,
+            @PathVariable String project,
             @Valid @RequestBody UpdateProjectRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        log.info("User {} updating project ID {} with new data: {}", userId, projectId, request);
+        UUID projectId = endpointService.resolveProject(org, project);
+        log.info("User {} updating project {}", userId, projectId);
 
         ProjectResponse updated = projectService.updateProject(userId, projectId, request);
         return ResponseEntity.ok(updated);
     }
 
     //  Delete a project
-    @DeleteMapping("/projects/{projectId}")
+    @DeleteMapping("/{org}/{project}")
     public ResponseEntity<Void> deleteProject(
-            @PathVariable UUID projectId,
+            @PathVariable String org,
+            @PathVariable String project,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID projectId = endpointService.resolveProject(org, project);
         log.warn("User {} deleting project ID {}", userId, projectId);
 
         projectService.deleteProject(userId, projectId);
         return ResponseEntity.noContent().build();
     }
 
-    // Count total projects
-    @GetMapping("/projects/count")
-    public ResponseEntity<Long> countProjects() {
-        long count = projectService.countProjects();
-        log.info("Total number of projects in the system: {}", count);
-        return ResponseEntity.ok(count);
+    //  Get all projects under a specific organization
+    @GetMapping("/{org}/projects")
+    public ResponseEntity<List<ProjectResponse>> getProjectsByOrganization(
+            @PathVariable String org,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID organizationId = endpointService.resolveOrganization(org);
+
+        log.debug("User {} fetching projects under org {}", userId, organizationId);
+
+        List<ProjectResponse> projects =
+                projectService.getProjectsByOrganizationId(userId, organizationId);
+
+        return ResponseEntity.ok(projects);
     }
 }

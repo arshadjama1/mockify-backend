@@ -45,6 +45,8 @@ public class AuthServiceImpl implements AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setProviderName("local");
+        user.setUsername(request.getEmail().split("@")[0].toLowerCase());
 
         User savedUser = userRepository.save(user);
 
@@ -63,6 +65,11 @@ public class AuthServiceImpl implements AuthService {
         // Find user
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+
+        // Check if it's a local user (has password)
+        if (user.getPassword() == null || user.getProviderName() == null || !"local".equals(user.getProviderName())) {
+            throw new UnauthorizedException("This account uses OAuth login. Please login with " + user.getProviderName());
+        }
 
         // Validate password
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {

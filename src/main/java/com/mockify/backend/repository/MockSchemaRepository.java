@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -21,4 +22,8 @@ public interface MockSchemaRepository extends JpaRepository<MockSchema, UUID> {
 
     // Count all schemas
     long count();
+
+    Optional<MockSchema> findBySlugAndProjectId(String slug, UUID projectId);
+
+    boolean existsBySlugAndProjectId(String slug, UUID projectId);
 }

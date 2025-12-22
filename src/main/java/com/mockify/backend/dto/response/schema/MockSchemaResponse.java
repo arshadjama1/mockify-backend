@@ -13,10 +13,12 @@ import java.util.UUID;
 public class MockSchemaResponse {
     private UUID id;
     private String name;
+    private String slug;
     private UUID projectId;
     private String projectName;
     private Map<String, Object> schemaJson;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private int recordCount;
     private String endpointUrl;
 }

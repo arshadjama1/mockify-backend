@@ -55,6 +55,10 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
         String email = oauthUser.getAttribute("email");
         String name = oauthUser.getAttribute("name");
+        String providerId = oauthUser.getAttribute("sub");
+        String givenName = oauthUser.getAttribute("given_name");
+        String familyName = oauthUser.getAttribute("family_name");
+        String picture = oauthUser.getAttribute("picture");
 
         if (email == null) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Email not provided by provider");
@@ -66,7 +70,14 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             User newUser = new User();
             newUser.setEmail(email);
             newUser.setName(name != null ? name : email);
-            newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString())); // not used for OAuth
+            newUser.setProviderName("google");
+            newUser.setProviderId(providerId);
+            newUser.setFirstName(givenName);
+            newUser.setLastName(familyName);
+            newUser.setAvatarUrl(picture);
+            newUser.setPassword(null);
+            newUser.setUsername(email.split("@")[0].toLowerCase());
+
             return userRepository.save(newUser);
         });
 

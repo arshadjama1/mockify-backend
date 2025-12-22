@@ -4,7 +4,13 @@ import com.mockify.backend.dto.response.record.MockRecordResponse;
 import com.mockify.backend.exception.ResourceNotFoundException;
 import com.mockify.backend.mapper.MockRecordMapper;
 import com.mockify.backend.model.MockRecord;
+import com.mockify.backend.model.MockSchema;
+import com.mockify.backend.model.Organization;
+import com.mockify.backend.model.Project;
 import com.mockify.backend.repository.MockRecordRepository;
+import com.mockify.backend.repository.MockSchemaRepository;
+import com.mockify.backend.repository.OrganizationRepository;
+import com.mockify.backend.repository.ProjectRepository;
 import com.mockify.backend.service.PublicMockRecordService;
 
 import lombok.RequiredArgsConstructor;
@@ -22,6 +28,9 @@ import java.util.UUID;
 public class PublicMockRecordServiceImpl implements PublicMockRecordService {
 
     private final MockRecordRepository mockRecordRepository;
+    private final OrganizationRepository organizationRepository;
+    private final ProjectRepository projectRepository;
+    private final MockSchemaRepository mockSchemaRepository;
     private final MockRecordMapper mockRecordMapper;
 
     @Override
@@ -46,6 +55,37 @@ public class PublicMockRecordServiceImpl implements PublicMockRecordService {
         log.info("Public user requesting all records for schemaId={}", schemaId);
 
         List<MockRecord> records = mockRecordRepository.findByMockSchema_Id(schemaId);
+
+        return mockRecordMapper.toResponseList(records);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MockRecordResponse> getRecordsBySlug(
+            String orgSlug,
+            String projectSlug,
+            String schemaSlug
+    ) {
+        log.info(
+                "Public user requesting records for org={}, project={}, schema={}",
+                orgSlug, projectSlug, schemaSlug
+        );
+
+        Organization organization = organizationRepository.findBySlug(orgSlug)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+
+        Project project = projectRepository.findBySlugAndOrganizationId(
+                projectSlug,
+                organization.getId()
+        ).orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+
+        MockSchema schema = mockSchemaRepository.findBySlugAndProjectId(
+                schemaSlug,
+                project.getId()
+        ).orElseThrow(() -> new ResourceNotFoundException("Schema not found"));
+
+        List<MockRecord> records =
+                mockRecordRepository.findByMockSchema_Id(schema.getId());
 
         return mockRecordMapper.toResponseList(records);
     }
