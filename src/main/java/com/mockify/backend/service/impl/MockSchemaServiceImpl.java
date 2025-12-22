@@ -76,7 +76,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
 
         // Check uniqueness within project
         if (mockSchemaRepository.existsBySlugAndProjectId(slug, request.getProjectId())) {
-           slugService.generateUniqueSlug(slug);
+           slug = slugService.generateUniqueSlug(slug);
         }
 
         // Validate Mock Schema
@@ -137,12 +137,15 @@ public class MockSchemaServiceImpl implements MockSchemaService {
         }
 
         // Validate Mock Schema
-        mockValidatorService.validateSchemaDefinition(request.getSchemaJson());
+        if (request.getSchemaJson() != null) {
+            mockValidatorService.validateSchemaDefinition(request.getSchemaJson());
+        }
 
+        String oldName = schema.getName();
         mockSchemaMapper.updateEntityFromRequest(request, schema);
 
         // If name changed, update slug
-        if (request.getName() != null && request.getName().equals(schema.getName())) {
+        if (request.getName() != null && !request.getName().equals(oldName)) {
             String newSlug = slugService.generateSlug(request.getName());
             if (mockSchemaRepository.existsBySlugAndProjectId(newSlug, schema.getProject().getId())) {
                 throw new DuplicateResourceException("Schema slug already exists in this project");

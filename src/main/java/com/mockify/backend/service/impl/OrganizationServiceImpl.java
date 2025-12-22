@@ -126,10 +126,11 @@ public class OrganizationServiceImpl implements OrganizationService {
             throw new BadRequestException("Another organization with name '" + request.getName() + "' already exists for this user.");
         }
 
+        // If name changed, update slug
+        String oldName = organization.getName();
         organizationMapper.updateEntityFromRequest(request, organization);
 
-        // If name changed, update slug
-        if (request.getName() != null && request.getName().equals(organization.getName())) {
+        if (request.getName() != null && !request.getName().equals(oldName)) {
             String newSlug = slugService.generateSlug(request.getName());
             if (organizationRepository.existsBySlug(newSlug)) {
                 throw new DuplicateResourceException("Organization slug already exists");

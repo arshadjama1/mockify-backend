@@ -117,10 +117,11 @@ public class ProjectServiceImpl implements ProjectService {
             }
         }
 
+        String oldName = project.getName();
         projectMapper.updateEntityFromRequest(request, project);
 
         // If name changed, update slug
-        if (request.getName() != null && request.getName().equals(project.getName())) {
+        if (request.getName() != null && !request.getName().equals(oldName)) {
             String newSlug = slugService.generateSlug(request.getName());
             if (projectRepository.existsBySlugAndOrganizationId(newSlug, project.getOrganization().getId())) {
                 throw new DuplicateResourceException("Project slug already exists in this organization");
