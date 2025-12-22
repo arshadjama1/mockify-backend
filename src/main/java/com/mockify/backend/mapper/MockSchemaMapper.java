@@ -22,8 +22,9 @@ public interface MockSchemaMapper {
     @Mapping(target = "projectId", source = "project.id")
     @Mapping(target = "projectName", source = "project.name")
     @Mapping(target = "recordCount", expression = "java(schema.getMockRecords() != null ? schema.getMockRecords().size() : 0)")
-    @Mapping(target = "endpointUrl", expression = "java(\"/api/v1/mock/\" + \"schemas/\" + schema.getId() + \"/records\")")
+    @Mapping(target = "endpointUrl", expression = "java(\"/api/v1/mock/schemas/\" + schema.getSlug() + \"/records\")")
     MockSchemaResponse toResponse(MockSchema schema);
+
     List<MockSchemaResponse> toResponseList(List<MockSchema> schemas);
 
     @Mapping(target = "project", expression = "java(toProjectSummary(schema))")
@@ -48,7 +49,9 @@ public interface MockSchemaMapper {
 
     // Create Request -> Entity
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "slug", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "project", ignore = true)
     @Mapping(target = "mockRecords", ignore = true)
     MockSchema toEntity(CreateMockSchemaRequest request);
@@ -57,12 +60,15 @@ public interface MockSchemaMapper {
     // Updates existing entity with only non-null fields
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "slug", ignore = true)
     @Mapping(target = "project", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "mockRecords", ignore = true)
     void updateEntityFromRequest(UpdateMockSchemaRequest request, @MappingTarget MockSchema entity);
 
     // ===== Helper Methods =====
+
     default MockSchemaDetailResponse.SchemaStats calculateSchemaStats(MockSchema schema) {
         MockSchemaDetailResponse.SchemaStats stats = new MockSchemaDetailResponse.SchemaStats();
         LocalDateTime now = LocalDateTime.now();

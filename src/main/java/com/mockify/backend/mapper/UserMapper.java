@@ -11,11 +11,19 @@ import java.util.List;
 public interface UserMapper {
     // Entity -> Response
     UserResponse toResponse(User user);
+
     List<UserResponse> toResponseList(List<User> users);
 
     // Create Request -> Entity
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "providerName", constant = "local")
+    @Mapping(target = "providerId", ignore = true)
+    @Mapping(target = "username", ignore = true)
+    @Mapping(target = "firstName", ignore = true)
+    @Mapping(target = "lastName", ignore = true)
+    @Mapping(target = "avatarUrl", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "organizations", ignore = true)
     User toEntity(RegisterRequest request);
 }

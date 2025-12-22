@@ -11,4 +11,10 @@ public interface PublicMockRecordService {
 
     // Get all records under Aa schema (public user)
     List<MockRecordResponse> getRecordsBySchemaId(UUID schemaId);
+
+    List<MockRecordResponse> getRecordsBySlug(
+            String orgSlug,
+            String projectSlug,
+            String schemaSlug
+    );
 }

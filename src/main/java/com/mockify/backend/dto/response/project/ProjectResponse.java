@@ -12,9 +12,11 @@ import java.util.UUID;
 public class ProjectResponse {
     private UUID id;
     private String name;
+    private String slug;
     private UUID organizationId;
     private String organizationName;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private int schemaCount;
     private int totalRecords;
 }

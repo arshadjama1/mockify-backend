@@ -31,4 +31,8 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
 
     // Count all organizations
     long count();
+
+    Optional<Organization> findBySlug(String slug);
+
+    boolean existsBySlug(String slug);
 }

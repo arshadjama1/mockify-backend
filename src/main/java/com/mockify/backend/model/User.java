@@ -26,11 +26,32 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password", nullable = false)
-    private String password;
+    @Column(name = "password")
+    private String password; // Now nullable for OAuth users
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "provider_name", nullable = false, length = 50)
+    private String providerName = "local";
+
+    @Column(name = "provider_id", length = 50)
+    private String providerId;
+
+    @Column(name = "username", unique = true, length = 150)
+    private String username;
+
+    @Column(name = "first_name", length = 150)
+    private String firstName;
+
+    @Column(name = "last_name", length = 150)
+    private String lastName;
+
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
+    private String avatarUrl;
 
     @JsonIgnore
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
@@ -41,5 +62,13 @@ public class User {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

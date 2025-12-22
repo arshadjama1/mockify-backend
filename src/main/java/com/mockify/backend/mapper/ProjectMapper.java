@@ -22,6 +22,7 @@ public interface ProjectMapper {
     @Mapping(target = "schemaCount", expression = "java(project.getMockSchemas().size())")
     @Mapping(target = "totalRecords", expression = "java(calculateTotalRecords(project))")
     ProjectResponse toResponse(Project project);
+
     List<ProjectResponse> toResponseList(List<Project> projects);
 
     @Mapping(target = "organization", source = "organization")
@@ -42,7 +43,9 @@ public interface ProjectMapper {
 
     // Create Request -> Entity
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "slug", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "organization", ignore = true)
     @Mapping(target = "mockSchemas", ignore = true)
     Project toEntity(CreateProjectRequest request);
@@ -51,8 +54,10 @@ public interface ProjectMapper {
     // Updates existing entity with only non-null fields
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "slug", ignore = true)
     @Mapping(target = "organization", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "mockSchemas", ignore = true)
     void updateEntityFromRequest(UpdateProjectRequest request, @MappingTarget Project entity);
 

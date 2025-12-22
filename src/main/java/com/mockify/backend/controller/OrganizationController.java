@@ -4,6 +4,7 @@ import com.mockify.backend.dto.request.organization.CreateOrganizationRequest;
 import com.mockify.backend.dto.request.organization.UpdateOrganizationRequest;
 import com.mockify.backend.dto.response.organization.OrganizationDetailResponse;
 import com.mockify.backend.dto.response.organization.OrganizationResponse;
+import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.OrganizationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,15 +22,15 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/organizations")
+@RequestMapping("/api")
 @Tag(name = "Organization")
-
 public class OrganizationController {
 
     private final OrganizationService organizationService;
+    private final EndpointService endpointService;
 
     // Create organization for logged-in user
-    @PostMapping
+    @PostMapping("/organizations")
     public ResponseEntity<OrganizationResponse> createOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CreateOrganizationRequest request) {
@@ -42,18 +43,24 @@ public class OrganizationController {
     }
 
     // Get details of a specific organization
-    @GetMapping("/{orgId}")
+    @GetMapping("/organizations/{org}")
     public ResponseEntity<OrganizationDetailResponse> getOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable UUID orgId) {
+            @PathVariable String org) {
+
         UUID userId = UUID.fromString(userDetails.getUsername());
-        log.debug("Fetching organization: {} for user: {}", orgId, userId);
-        OrganizationDetailResponse org = organizationService.getOrganizationDetail(orgId, userId);
-        return ResponseEntity.ok(org);
+        UUID orgId = endpointService.resolveOrganization(org);
+
+        log.debug("User {} fetching organization {}", userId, orgId);
+
+        OrganizationDetailResponse response =
+                organizationService.getOrganizationDetail(orgId, userId);
+
+        return ResponseEntity.ok(response);
     }
 
     // Get all organizations for current user
-    @GetMapping
+    @GetMapping("/organizations")
     public ResponseEntity<List<OrganizationResponse>> getMyOrganizations(
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -63,24 +70,30 @@ public class OrganizationController {
     }
 
     // Update organization
-    @PutMapping("/{orgId}")
+    @PutMapping("/organizations/{org}")
     public ResponseEntity<OrganizationResponse> updateOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable UUID orgId,
+            @PathVariable String org,
             @Valid @RequestBody UpdateOrganizationRequest request) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        OrganizationResponse updated = organizationService.updateOrganization(userId, orgId, request);
+        UUID orgId = endpointService.resolveOrganization(org);
+
+        OrganizationResponse updated =
+                organizationService.updateOrganization(userId, orgId, request);
+
         return ResponseEntity.ok(updated);
     }
 
     // Delete organization
-    @DeleteMapping("/{orgId}")
+    @DeleteMapping("/organizations/{org}")
     public ResponseEntity<Void> deleteOrganization(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable UUID orgId) {
+            @PathVariable String org) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID orgId = endpointService.resolveOrganization(org);
+
         organizationService.deleteOrganization(userId, orgId);
         return ResponseEntity.noContent().build();
     }

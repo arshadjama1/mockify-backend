@@ -1,4 +1,3 @@
-// MockSchema.java
 package com.mockify.backend.model;
 
 import jakarta.persistence.*;
@@ -27,9 +26,12 @@ public class MockSchema {
     @Column(nullable = false)
     private String name;
 
+    @Column(nullable = false, length = 255)
+    private String slug;
+
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
+    @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -38,6 +40,9 @@ public class MockSchema {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @JsonIgnore
     @OneToMany(mappedBy = "mockSchema", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -48,5 +53,13 @@ public class MockSchema {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
