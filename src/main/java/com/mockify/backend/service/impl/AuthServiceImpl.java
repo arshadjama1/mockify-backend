@@ -1,5 +1,7 @@
 package com.mockify.backend.service.impl;
 
+import com.mockify.backend.dto.response.AuthResult;
+import com.mockify.backend.dto.response.TokenPair;
 import com.mockify.backend.dto.request.auth.LoginRequest;
 import com.mockify.backend.dto.request.auth.RegisterRequest;
 import com.mockify.backend.dto.response.auth.AuthResponse;
@@ -31,16 +33,19 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserMapper userMapper;
-    public record TokenPair(String accessToken, String refreshToken) {}
+    private final CookieUtil cookieUtil;
 
     @Override
     @Transactional
-    public TokenPair registerAndLogin(RegisterRequest request) {
+    public AuthResult registerAndLogin(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
+            log.warn("User registration failed email={} reason=already_exists", request.getEmail());
             throw new DuplicateResourceException("Email already registered");
         }
 
+        // Create user
+        log.info("User registration started email={}", request.getEmail());
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
@@ -49,17 +54,34 @@ public class AuthServiceImpl implements AuthService {
         user.setUsername(request.getEmail().split("@")[0].toLowerCase());
 
         User savedUser = userRepository.save(user);
+        log.info("User registered successfully userId={}", savedUser.getId());
 
-        return new TokenPair(
+        // Generate tokens
+        TokenPair tokens = new TokenPair(
                 jwtTokenProvider.generateAccessToken(savedUser.getId()),
                 jwtTokenProvider.generateRefreshToken(savedUser.getId())
         );
+
+        // Build cookie
+        ResponseCookie cookie = cookieUtil.createRefreshToken(tokens.refreshToken());
+
+        // Build response body
+        AuthResponse response = AuthResponse.builder()
+                .accessToken(tokens.accessToken())
+                .tokenType("Bearer")
+                .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
+                .user(userMapper.toResponse(user))
+                .build();
+
+
+        return new AuthResult(response, cookie);
     }
 
 
     @Override
     @Transactional(readOnly = true)
-    public TokenPair login(LoginRequest request) {
+    public AuthResult login(LoginRequest request) {
+
         log.info("Login attempt for email: {}", request.getEmail());
 
         // Find user
@@ -78,36 +100,88 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Generate tokens
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+        TokenPair tokens = new TokenPair(
+                jwtTokenProvider.generateAccessToken(user.getId()),
+                jwtTokenProvider.generateRefreshToken(user.getId())
+        );
 
-        log.info("User logged in successfully: {}", user.getId());
-        return new TokenPair(accessToken, refreshToken);
+        // Build cookie
+        ResponseCookie cookie = cookieUtil.createRefreshToken(tokens.refreshToken());
+
+        // Build response body
+        AuthResponse response = AuthResponse.builder()
+                .accessToken(tokens.accessToken())
+                .tokenType("Bearer")
+                .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
+                .user(userMapper.toResponse(user))
+                .build();
+
+        log.info("Login successful userId={}", user.getId());
+
+        return new AuthResult(response, cookie);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public String refreshAccessToken(String refreshToken) {
+    public AuthResult refresh(String refreshToken) {
 
-        if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
-            throw new RuntimeException("Invalid refresh token");
+        log.info("Token refresh requested");
+
+        // User validation
+        UUID userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+        userRepository.findById(userId)
+                .orElseThrow(() -> new UnauthorizedException("User not found"));
+
+        // Token validation
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new UnauthorizedException("Refresh token missing");
         }
 
-        UUID userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+        if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
+            log.warn("Token refresh failed reason=invalid_refresh_token");
+            throw new UnauthorizedException("Invalid refresh token");
+        }
 
-        return jwtTokenProvider.generateAccessToken(userId);
+        // Generate tokens
+        TokenPair tokens = new TokenPair(
+                jwtTokenProvider.generateAccessToken(userId),
+                jwtTokenProvider.generateRefreshToken(userId)
+        );
+
+        // Build cookie
+        ResponseCookie cookie = cookieUtil.createRefreshToken(tokens.refreshToken());
+
+        // Build response body
+        AuthResponse response = AuthResponse.builder()
+                .accessToken(tokens.accessToken())
+                .tokenType("Bearer")
+                .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
+                .build();
+
+        log.info("Token refreshed userId={}", userId);
+
+        return new AuthResult(response, cookie);
     }
 
     @Override
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser(UUID userId) {
+
+        log.debug("Fetching user profile userId={}", userId);
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
         return userMapper.toResponse(user);
     }
 
-    @Override
     public void logout() {
-        // Clear the Cookie
+
+        log.info("Logout requested");
+
+        // TODAY: no-op
+        // FUTURE: redis token invalidation
+
+        log.info("Logout completed");
     }
 }
