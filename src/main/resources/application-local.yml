@@ -17,3 +17,12 @@ jwt:
     expiration: ${JWT_ACCESS_EXPIRATION:3600000}
   refresh:
     expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+app:
+  cookie:
+    refresh-token:
+      name: refresh_token
+      path: /api/auth/refresh
+      max-age: 604800        # 7 days
+      secure: false          # HTTP allowed (localhost)
+      same-site: Lax         # Works well for same-site dev

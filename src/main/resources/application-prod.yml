@@ -19,3 +19,13 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+
+app:
+  cookie:
+    refresh-token:
+      name: refresh_token
+      path: /api/auth/refresh
+      max-age: 604800        # 7 days
+      secure: true           # REQUIRED in prod
+      same-site: None        # REQUIRED for cross-domain frontend

@@ -1,7 +1,8 @@
 package com.mockify.backend.service.impl;
 
+import com.mockify.backend.dto.response.AuthResult;
+import com.mockify.backend.dto.response.TokenPair;
 import com.mockify.backend.dto.request.auth.LoginRequest;
-import com.mockify.backend.dto.request.auth.RefreshTokenRequest;
 import com.mockify.backend.dto.request.auth.RegisterRequest;
 import com.mockify.backend.dto.response.auth.AuthResponse;
 import com.mockify.backend.dto.response.auth.UserResponse;
@@ -11,10 +12,12 @@ import com.mockify.backend.exception.UnauthorizedException;
 import com.mockify.backend.mapper.UserMapper;
 import com.mockify.backend.model.User;
 import com.mockify.backend.repository.UserRepository;
+import com.mockify.backend.security.CookieUtil;
 import com.mockify.backend.security.JwtTokenProvider;
 import com.mockify.backend.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,18 +33,19 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserMapper userMapper;
+    private final CookieUtil cookieUtil;
 
     @Override
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
-        log.info("Registering new user with email: {}", request.getEmail());
+    public AuthResult registerAndLogin(RegisterRequest request) {
 
-        //  Check if user already exists
         if (userRepository.existsByEmail(request.getEmail())) {
+            log.warn("User registration failed email={} reason=already_exists", request.getEmail());
             throw new DuplicateResourceException("Email already registered");
         }
 
-        // Create and save new user
+        // Create user
+        log.info("User registration started email={}", request.getEmail());
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
@@ -50,27 +54,34 @@ public class AuthServiceImpl implements AuthService {
         user.setUsername(request.getEmail().split("@")[0].toLowerCase());
 
         User savedUser = userRepository.save(user);
+        log.info("User registered successfully userId={}", savedUser.getId());
 
         // Generate tokens
-        String accessToken = jwtTokenProvider.generateAccessToken(savedUser.getId());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(savedUser.getId());
+        TokenPair tokens = new TokenPair(
+                jwtTokenProvider.generateAccessToken(savedUser.getId()),
+                jwtTokenProvider.generateRefreshToken(savedUser.getId())
+        );
 
-        // Build response
+        // Build cookie
+        ResponseCookie cookie = cookieUtil.createRefreshToken(tokens.refreshToken());
+
+        // Build response body
         AuthResponse response = AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
+                .accessToken(tokens.accessToken())
                 .tokenType("Bearer")
                 .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
-                .user(userMapper.toResponse(savedUser))
+                .user(userMapper.toResponse(user))
                 .build();
 
-        log.info("User registered successfully with id: {}", savedUser.getId());
-        return response;
+
+        return new AuthResult(response, cookie);
     }
+
 
     @Override
     @Transactional(readOnly = true)
-    public AuthResponse login(LoginRequest request) {
+    public AuthResult login(LoginRequest request) {
+
         log.info("Login attempt for email: {}", request.getEmail());
 
         // Find user
@@ -89,75 +100,88 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Generate tokens
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+        TokenPair tokens = new TokenPair(
+                jwtTokenProvider.generateAccessToken(user.getId()),
+                jwtTokenProvider.generateRefreshToken(user.getId())
+        );
 
-        // Build response
+        // Build cookie
+        ResponseCookie cookie = cookieUtil.createRefreshToken(tokens.refreshToken());
+
+        // Build response body
         AuthResponse response = AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
+                .accessToken(tokens.accessToken())
                 .tokenType("Bearer")
                 .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
                 .user(userMapper.toResponse(user))
                 .build();
 
-        log.info("User logged in successfully: {}", user.getId());
-        return response;
+        log.info("Login successful userId={}", user.getId());
+
+        return new AuthResult(response, cookie);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public AuthResponse refreshToken(RefreshTokenRequest request) {
-        log.info("Token refresh request received");
+    public AuthResult refresh(String refreshToken) {
 
-        String refreshToken = request.getRefreshToken();
+        log.info("Token refresh requested");
 
-        // Validate refresh token
-        if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
-            log.warn("Invalid or expired refresh token");
-            throw new UnauthorizedException("Invalid or expired refresh token");
+        // Token validation
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new UnauthorizedException("Refresh token missing");
         }
 
-        // Extract user ID from refresh token
-        UUID userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
-        if (userId == null) {
-            log.warn("Unable to extract user ID from refresh token");
+        if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
+            log.warn("Token refresh failed reason=invalid_refresh_token");
             throw new UnauthorizedException("Invalid refresh token");
         }
 
-        // Verify user still exists
-        User user = userRepository.findById(userId)
+        // User validation
+        UUID userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+        userRepository.findById(userId)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
-        // Generate new tokens
-        String newAccessToken = jwtTokenProvider.generateAccessToken(userId);
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(userId);
+        // Generate tokens
+        TokenPair tokens = new TokenPair(
+                jwtTokenProvider.generateAccessToken(userId),
+                jwtTokenProvider.generateRefreshToken(userId)
+        );
 
-        // Build response
+        // Build cookie
+        ResponseCookie cookie = cookieUtil.createRefreshToken(tokens.refreshToken());
+
+        // Build response body
         AuthResponse response = AuthResponse.builder()
-                .accessToken(newAccessToken)
-                .refreshToken(newRefreshToken)
+                .accessToken(tokens.accessToken())
                 .tokenType("Bearer")
                 .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
-                .user(userMapper.toResponse(user))
                 .build();
 
+        log.info("Token refreshed userId={}", userId);
 
-        log.info("Tokens refreshed successfully for user: {}", userId);
-        return response;
+        return new AuthResult(response, cookie);
     }
 
     @Override
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser(UUID userId) {
+
+        log.debug("Fetching user profile userId={}", userId);
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
         return userMapper.toResponse(user);
     }
 
-    @Override
     public void logout() {
-        // Stateless logout: just discard tokens client-side
-        System.out.println("User logging out.");
+
+        log.info("Logout requested");
+
+        // TODAY: no-op
+        // FUTURE: redis token invalidation
+
+        log.info("Logout completed");
     }
 }

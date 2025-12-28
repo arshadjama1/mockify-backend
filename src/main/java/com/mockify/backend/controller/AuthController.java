@@ -1,15 +1,18 @@
 package com.mockify.backend.controller;
 
+import com.mockify.backend.dto.response.AuthResult;
 import com.mockify.backend.dto.request.auth.LoginRequest;
-import com.mockify.backend.dto.request.auth.RefreshTokenRequest;
 import com.mockify.backend.dto.request.auth.RegisterRequest;
 import com.mockify.backend.dto.response.auth.AuthResponse;
 import com.mockify.backend.dto.response.auth.UserResponse;
+import com.mockify.backend.security.CookieUtil;
+import com.mockify.backend.security.JwtTokenProvider;
 import com.mockify.backend.service.AuthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,49 +21,74 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/auth")
 @Tag(name = "Authentication")
+@Slf4j
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final CookieUtil cookieUtil;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        log.info("Registration request received for email: {}", request.getEmail());
-        AuthResponse response = authService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<AuthResponse> register(
+            @Valid @RequestBody RegisterRequest request) {
+
+        AuthResult authResult = authService.registerAndLogin(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header(HttpHeaders.SET_COOKIE, authResult.refreshCookie().toString())
+                .body(authResult.response());
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        log.info("Login request received for email: {}", request.getEmail());
-        AuthResponse response = authService.login(request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<AuthResponse> login(
+            @RequestBody @Valid LoginRequest request) {
+
+        AuthResult authResult = authService.login(request);
+        log.info("Refresh tokne: {}", authResult.refreshCookie());
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, authResult.refreshCookie().toString())
+                .body(authResult.response());
     }
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUser(
             @AuthenticationPrincipal UserDetails userDetails) {
+
         UUID userId = UUID.fromString(userDetails.getUsername());
-        log.debug("Fetching current user: {}", userId);
+
         UserResponse user = authService.getCurrentUser(userId);
         return ResponseEntity.ok(user);
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
-        // Stateless logout: just discard tokens client-side
-        authService.logout();
-        return ResponseEntity.noContent().build();
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(
+            @CookieValue(name = "refresh_token", required = false)
+            String refreshToken) {
+
+        AuthResult authResult = authService.refresh(refreshToken);
+
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, authResult.refreshCookie().toString())
+                .body(authResult.response());
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
-        return ResponseEntity.ok(authService.refreshToken(request));
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+
+        authService.logout();
+
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE,
+                        cookieUtil.clearRefreshToken().toString())
+                .build();
     }
+
 }
 
 
