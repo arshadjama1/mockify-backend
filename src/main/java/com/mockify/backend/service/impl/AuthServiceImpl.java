@@ -127,15 +127,15 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Token refresh requested");
 
-        // User validation
-        UUID userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
-        userRepository.findById(userId)
-                .orElseThrow(() -> new UnauthorizedException("User not found"));
-
         // Token validation
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new UnauthorizedException("Refresh token missing");
         }
+
+        // User validation
+        UUID userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+        userRepository.findById(userId)
+                .orElseThrow(() -> new UnauthorizedException("User not found"));
 
         if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
             log.warn("Token refresh failed reason=invalid_refresh_token");
