@@ -1,5 +1,7 @@
 package com.mockify.backend.controller;
 
+import com.mockify.backend.dto.request.auth.ForgotPasswordRequest;
+import com.mockify.backend.dto.request.auth.ResetPasswordRequest;
 import com.mockify.backend.dto.response.AuthResult;
 import com.mockify.backend.dto.request.auth.LoginRequest;
 import com.mockify.backend.dto.request.auth.RegisterRequest;
@@ -82,6 +84,30 @@ public class AuthController {
     public ResponseEntity<Void> logout() {
 
         authService.logout();
+
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE,
+                        cookieUtil.clearRefreshToken().toString())
+                .build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+
+        authService.forgotPassword(request.getEmail());
+
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+
+        authService.resetPassword(request.getToken(), request.getNewPassword());
+
+        // Temporary approach: clear the refresh token cookie after password reset
+        // TODO: Replace with token versioning to support proper global logout
 
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE,

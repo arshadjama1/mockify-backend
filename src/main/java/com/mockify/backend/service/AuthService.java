@@ -24,7 +24,10 @@ public interface AuthService {
     // Refresh access_token using refresh_token
     AuthResult refresh(String refreshToken);
 
-//     Change current user's password
-//  void changePassword(String oldPassword, String newPassword);
+    // Forget password request
+    void forgotPassword(String email);
+
+    // Reset password via mail
+    void resetPassword(String token, String newPassword);
 
 }

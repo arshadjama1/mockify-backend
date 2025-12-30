@@ -10,18 +10,25 @@ import com.mockify.backend.exception.DuplicateResourceException;
 import com.mockify.backend.exception.ResourceNotFoundException;
 import com.mockify.backend.exception.UnauthorizedException;
 import com.mockify.backend.mapper.UserMapper;
+import com.mockify.backend.model.PasswordResetToken;
 import com.mockify.backend.model.User;
+import com.mockify.backend.repository.PasswordResetTokenRepository;
 import com.mockify.backend.repository.UserRepository;
 import com.mockify.backend.security.CookieUtil;
 import com.mockify.backend.security.JwtTokenProvider;
 import com.mockify.backend.service.AuthService;
+import com.mockify.backend.service.MailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URISyntaxException;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -34,6 +41,15 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserMapper userMapper;
     private final CookieUtil cookieUtil;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final MailService mailService;
+
+    @Value("${app.frontend.reset-password-url}")
+    private String resetPasswordBaseUrl;
+
+    // Constants
+    private static final String AUTH_PROVIDER_LOCAL = "local";
+    private static final String TOKEN_TYPE_BEARER = "Bearer";
 
     @Override
     @Transactional
@@ -50,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setProviderName("local");
+        user.setProviderName(AUTH_PROVIDER_LOCAL);
         user.setUsername(request.getEmail().split("@")[0].toLowerCase());
 
         User savedUser = userRepository.save(user);
@@ -68,7 +84,7 @@ public class AuthServiceImpl implements AuthService {
         // Build response body
         AuthResponse response = AuthResponse.builder()
                 .accessToken(tokens.accessToken())
-                .tokenType("Bearer")
+                .tokenType(TOKEN_TYPE_BEARER)
                 .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
                 .user(userMapper.toResponse(user))
                 .build();
@@ -89,7 +105,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
 
         // Check if it's a local user (has password)
-        if (user.getPassword() == null || user.getProviderName() == null || !"local".equals(user.getProviderName())) {
+        if (user.getPassword() == null || user.getProviderName() == null || !AUTH_PROVIDER_LOCAL.equals(user.getProviderName())) {
             throw new UnauthorizedException("This account uses OAuth login. Please login with " + user.getProviderName());
         }
 
@@ -111,7 +127,7 @@ public class AuthServiceImpl implements AuthService {
         // Build response body
         AuthResponse response = AuthResponse.builder()
                 .accessToken(tokens.accessToken())
-                .tokenType("Bearer")
+                .tokenType(TOKEN_TYPE_BEARER)
                 .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
                 .user(userMapper.toResponse(user))
                 .build();
@@ -154,7 +170,7 @@ public class AuthServiceImpl implements AuthService {
         // Build response body
         AuthResponse response = AuthResponse.builder()
                 .accessToken(tokens.accessToken())
-                .tokenType("Bearer")
+                .tokenType(TOKEN_TYPE_BEARER)
                 .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
                 .build();
 
@@ -175,6 +191,7 @@ public class AuthServiceImpl implements AuthService {
         return userMapper.toResponse(user);
     }
 
+    @Override
     public void logout() {
 
         log.info("Logout requested");
@@ -183,5 +200,86 @@ public class AuthServiceImpl implements AuthService {
         // FUTURE: redis token invalidation
 
         log.info("Logout completed");
+    }
+
+
+    @Override
+    @Transactional
+    public void forgotPassword(String email) {
+
+        // If user exists, run logic
+        // If user does NOT exist, do nothing
+        // Method still returns 200 OK
+
+        userRepository.findByEmail(email).ifPresent(user -> {
+
+            // Only local users can reset password
+            if (!AUTH_PROVIDER_LOCAL.equals(user.getProviderName())) {
+                log.info("Password reset skipped for oauth user email={}", email);
+                return;
+            }
+
+            // Generate raw token
+            String rawToken = UUID.randomUUID().toString();
+
+            // Hash token (for now bcrypt is ok, letter SHA-256 token optimization)
+            String hashedToken = passwordEncoder.encode(rawToken);
+
+            PasswordResetToken resetToken = PasswordResetToken.builder()
+                    .user(user)
+                    .tokenHash(hashedToken)
+                    .expiresAt(LocalDateTime.now().plusMinutes(30))
+                    .used(false)
+                    .build();
+
+            passwordResetTokenRepository.save(resetToken);
+
+            // Create reset link with raw token
+            String resetLink = resetPasswordBaseUrl + "?token=" + rawToken;
+
+            // Send mail to register user with reset link
+            mailService.sendPasswordResetMail(user.getEmail(),resetLink);
+
+            log.info("Password reset token created userId={}", user.getId());
+        });
+
+        // Always return success (no email existence leak)
+    }
+
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+
+        // Fetch unused and non expire tokens
+        List<PasswordResetToken> tokens =
+                passwordResetTokenRepository
+                        .findByUsedFalseAndExpiresAtAfter(LocalDateTime.now());
+
+
+        // Filter token: raw token matches with hashed token
+        PasswordResetToken validToken = tokens.stream()
+                .filter(t -> passwordEncoder.matches(token, t.getTokenHash()))
+                .findFirst()
+
+                // If token not matches all rules, Throw error
+                .orElseThrow(() ->
+                        new UnauthorizedException("Invalid or expired reset token")
+                );
+
+        User user = validToken.getUser();
+
+        if (!AUTH_PROVIDER_LOCAL.equals(user.getProviderName())) {
+            throw new UnauthorizedException("Password reset not allowed for OAuth users");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Set new password and mark token as used, prevent token reuse
+        validToken.setUsed(true);
+        passwordResetTokenRepository.save(validToken);
+
+        log.info("Password reset successful userId={}", user.getId());
     }
 }
