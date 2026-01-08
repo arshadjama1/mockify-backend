@@ -2,6 +2,8 @@ package com.mockify.backend.repository;
 
 import com.mockify.backend.model.MockRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -22,4 +24,12 @@ public interface MockRecordRepository extends JpaRepository<MockRecord, UUID> {
 
     // Count all records
     long count();
+
+    // Delete expired mock datas
+    @Modifying
+    @Query("""
+        DELETE FROM MockRecord r
+        WHERE r.expiresAt < :now
+    """)
+    int deleteExpiredMockRecords(LocalDateTime now);
 }

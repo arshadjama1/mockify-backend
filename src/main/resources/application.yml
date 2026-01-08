@@ -71,3 +71,13 @@ app:
   frontend:
     url: http://localhost:3000
     reset-password-url: http://localhost:3000/reset-password
+
+# Cleanup Scheduling
+cleanup:
+  password-token:
+    enabled: true
+    cron: "0 0 * * * *"   # every hour
+
+  mock-data:
+    enabled: true
+    cron: "0 */10 * * * *" # every 10 minutes
