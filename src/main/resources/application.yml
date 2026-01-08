@@ -1,3 +1,5 @@
+# Application & Environment Settings
+
 spring:
   application:
     name: Mockify Backend
@@ -5,10 +7,12 @@ spring:
   profiles:
     default: local
 
+  # Docker Configuration
   docker:
     compose:
       enabled: false
 
+  # JPA & Hibernate Configuration
   jpa:
     open-in-view: false
     hibernate:
@@ -24,12 +28,13 @@ spring:
   jackson:
     time-zone: Asia/Kolkata
 
+  # Database Migration (Flyway)
   flyway:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
 
-#  OAuth 2 configuration
+  # OAuth 2 configuration (Google)
   security:
     oauth2:
       client:
@@ -48,6 +53,21 @@ spring:
           google:
             issuer-uri: https://accounts.google.com
 
+  # Email / SMTP Configuration
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Application-Specific Properties (Frontend)
 app:
   frontend:
     url: http://localhost:3000
+    reset-password-url: http://localhost:3000/reset-password

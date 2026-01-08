@@ -1,4 +1,7 @@
+# Local Development Configuration
+
 spring:
+  # Local Database Configuration
   datasource:
     url: jdbc:postgresql://localhost:5432/mockify
     username: mockify_user
@@ -7,10 +10,12 @@ spring:
   jpa:
     show-sql: true
 
+  # Docker Compose (Local Only)
   docker:
     compose:
       enabled: true
 
+# JWT Configuration (Local)
 jwt:
   secret: ${JWT_SECRET:af84c6a92b8d5f4e1c7d92a6e6a1c56a4e9f45bba782cd51e2e1f67a9c34b12f}
   access:
@@ -18,6 +23,7 @@ jwt:
   refresh:
     expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
+# Application Cookie Settings (Local)
 app:
   cookie:
     refresh-token:

@@ -27,6 +27,10 @@ public class MockifyBackendApplication {
 		System.setProperty("JWT_ACCESS_EXPIRATION", dotenv.get("JWT_ACCESS_EXPIRATION"));
 		System.setProperty("JWT_REFRESH_EXPIRATION", dotenv.get("JWT_REFRESH_EXPIRATION"));
 
+        // Set Email credentials from .env
+        System.setProperty("MAIL_USERNAME", dotenv.get("MAIL_USERNAME"));
+        System.setProperty("MAIL_PASSWORD", dotenv.get("MAIL_PASSWORD"));
+
 		// Set timezone at JVM level
 		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"));
 

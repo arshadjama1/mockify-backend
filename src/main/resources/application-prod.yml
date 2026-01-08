@@ -1,12 +1,17 @@
+# Production Environment Configuration
+
 spring:
+  # Production Database Configuration
   datasource:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASS}
 
+  # JPA Debugging Settings disable
   jpa:
     show-sql: false
 
+# JWT Configuration (Production)
 jwt:
   secret: ${JWT_SECRET}
   access:
@@ -14,13 +19,14 @@ jwt:
   refresh:
     expiration: ${JWT_REFRESH_EXPIRATION:86400000}
 
+# API Documentation (Disabled in Prod)
 springdoc:
   api-docs:
     enabled: false
   swagger-ui:
     enabled: false
 
-
+# Application Cookie Settings (Production)
 app:
   cookie:
     refresh-token:
