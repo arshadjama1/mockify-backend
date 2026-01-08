@@ -19,7 +19,7 @@ public interface AuthService {
     UserResponse getCurrentUser(UUID userId);
 
     // Logout user and invalidate tokens
-    void logout();
+    void logout(String refreshToken);
 
     // Refresh access_token using refresh_token
     AuthResult refresh(String refreshToken);

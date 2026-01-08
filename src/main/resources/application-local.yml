@@ -28,7 +28,7 @@ app:
   cookie:
     refresh-token:
       name: refresh_token
-      path: /api/auth/refresh
+      path: /api/auth        # Send cookie only for auth url (Refresh & Logout)
       max-age: 604800        # 7 days
       secure: false          # HTTP allowed (localhost)
       same-site: Lax         # Works well for same-site dev

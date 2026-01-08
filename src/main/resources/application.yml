@@ -66,6 +66,12 @@ spring:
           starttls:
             enable: true
 
+ # Redis configuration
+  data:
+    redis:
+      host: redis
+      port: 6379
+
 # Application-Specific Properties (Frontend)
 app:
   frontend:

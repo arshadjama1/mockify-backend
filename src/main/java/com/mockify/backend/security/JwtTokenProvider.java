@@ -118,4 +118,43 @@ public class JwtTokenProvider {
         }
         return false;
     }
+
+    // Returns JWT ID (jti) from token.
+    public String getJti(String token) {
+        try {
+            Claims claims = getAllClaims(token);
+            return claims.getId();
+        } catch (JwtException | IllegalArgumentException e) {
+            log.error("Failed to extract jti from token: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    // Returns token expiration date.
+    // Useful for calculating remaining TTL.
+    public Date getExpiration(String token) {
+        try {
+            Claims claims = getAllClaims(token);
+            return claims.getExpiration();
+        } catch (JwtException | IllegalArgumentException e) {
+            log.error("Failed to extract expiration from token: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /*
+         Returns the token type (access / refresh).
+         Used to ensure refresh tokens are NOT used as access tokens
+         and access tokens are NOT used for refresh.
+         This prevents long-lived refresh tokens from accessing APIs.
+     */
+    public String getTokenType(String token) {
+        try {
+            Claims claims = getAllClaims(token);
+            return claims.get("type", String.class);
+        } catch (JwtException | IllegalArgumentException e) {
+            log.error("Failed to extract token type: {}", e.getMessage());
+            return null;
+        }
+    }
 }
