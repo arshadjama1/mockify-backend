@@ -13,7 +13,6 @@ import com.mockify.backend.service.AuthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +26,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api/auth")
 @Tag(name = "Authentication")
-@Slf4j
 public class AuthController {
 
     private final AuthService authService;
@@ -50,7 +48,6 @@ public class AuthController {
             @RequestBody @Valid LoginRequest request) {
 
         AuthResult authResult = authService.login(request);
-        log.info("Refresh tokne: {}", authResult.refreshCookie());
 
         return ResponseEntity.status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, authResult.refreshCookie().toString())
@@ -81,9 +78,11 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = "refresh_token", required = false)
+            String refreshToken) {
 
-        authService.logout();
+        authService.logout(refreshToken);
 
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE,

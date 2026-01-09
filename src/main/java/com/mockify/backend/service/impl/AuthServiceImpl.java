@@ -16,6 +16,7 @@ import com.mockify.backend.repository.PasswordResetTokenRepository;
 import com.mockify.backend.repository.UserRepository;
 import com.mockify.backend.security.CookieUtil;
 import com.mockify.backend.security.JwtTokenProvider;
+import com.mockify.backend.security.RefreshTokenBlacklist;
 import com.mockify.backend.service.AuthService;
 import com.mockify.backend.service.MailService;
 import lombok.RequiredArgsConstructor;
@@ -25,9 +26,10 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.net.URISyntaxException;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,6 +45,7 @@ public class AuthServiceImpl implements AuthService {
     private final CookieUtil cookieUtil;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final MailService mailService;
+    private final RefreshTokenBlacklist refreshTokenBlacklist;
 
     @Value("${app.frontend.reset-password-url}")
     private String resetPasswordBaseUrl;
@@ -153,16 +156,28 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException("Invalid refresh token");
         }
 
+        // Check Redis blacklist
+        String jti = jwtTokenProvider.getJti(refreshToken);
+        if (refreshTokenBlacklist.isBlacklisted(jti)) {
+            log.warn("Blocked refresh attempt using blacklisted token jti={}", jti);
+            throw new UnauthorizedException("Refresh token has been invalidated");
+        }
+
         // User validation
         UUID userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
         userRepository.findById(userId)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
-        // Generate tokens
+        // Generate new tokens
         TokenPair tokens = new TokenPair(
                 jwtTokenProvider.generateAccessToken(userId),
                 jwtTokenProvider.generateRefreshToken(userId)
         );
+
+        // Blacklist old refresh token after new token generation
+        Date expiration = jwtTokenProvider.getExpiration(refreshToken);
+        Duration ttl = Duration.between(Instant.now(), expiration.toInstant());
+        refreshTokenBlacklist.blacklist(jti, ttl);
 
         // Build cookie
         ResponseCookie cookie = cookieUtil.createRefreshToken(tokens.refreshToken());
@@ -192,12 +207,46 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout() {
+    public void logout(String refreshToken) {
 
         log.info("Logout requested");
 
-        // TODAY: no-op
-        // FUTURE: redis token invalidation
+        // missing token should not fail logout
+        if (refreshToken == null || refreshToken.isBlank()) {
+            log.info("Logout completed without refresh token");
+            return;
+        }
+
+        try {
+            // Validate token structure & type
+            if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
+                log.warn("Skipping blacklist: invalid refresh token");
+                return;
+            }
+
+            String jti = jwtTokenProvider.getJti(refreshToken);
+
+            Date expiration = jwtTokenProvider.getExpiration(refreshToken);
+
+            if (jti == null || expiration == null) {
+                log.warn("Skipping blacklist: missing jti or expiration");
+                return;
+            }
+
+            Duration ttl = Duration.between(
+                    Instant.now(),
+                    expiration.toInstant()
+            );
+
+            // Blacklist refresh token by jti for some TTL
+            refreshTokenBlacklist.blacklist(jti, ttl);
+
+            log.info("Refresh token invalidated jti={}", jti);
+
+        } catch (Exception ex) {
+            // Logout must NEVER break user flow
+            log.error("Logout failed silently: {}", ex.getMessage());
+        }
 
         log.info("Logout completed");
     }
