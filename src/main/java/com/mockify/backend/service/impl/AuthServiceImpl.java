@@ -156,12 +156,6 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException("Invalid refresh token");
         }
 
-        // Validate token type must be refresh
-        String tokenType = jwtTokenProvider.getTokenType(refreshToken);
-        if (!"refresh".equals(tokenType)) {
-            throw new UnauthorizedException("Invalid token type");
-        }
-
         // Check Redis blacklist
         String jti = jwtTokenProvider.getJti(refreshToken);
         if (refreshTokenBlacklist.isBlacklisted(jti)) {
@@ -183,10 +177,7 @@ public class AuthServiceImpl implements AuthService {
         // Blacklist old refresh token after new token generation
         Date expiration = jwtTokenProvider.getExpiration(refreshToken);
         Duration ttl = Duration.between(Instant.now(), expiration.toInstant());
-
-        if (!refreshTokenBlacklist.isBlacklisted(jti)) {
-            refreshTokenBlacklist.blacklist(jti, ttl);
-        }
+        refreshTokenBlacklist.blacklist(jti, ttl);
 
         // Build cookie
         ResponseCookie cookie = cookieUtil.createRefreshToken(tokens.refreshToken());
