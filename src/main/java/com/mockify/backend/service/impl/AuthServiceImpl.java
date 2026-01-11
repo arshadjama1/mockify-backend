@@ -248,6 +248,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
 
+    // TODO: Currently only newPassword is accepted. Add confirmPassword parameter in the future.
     @Override
     @Transactional
     public void resetPassword(String token, String newPassword) {
