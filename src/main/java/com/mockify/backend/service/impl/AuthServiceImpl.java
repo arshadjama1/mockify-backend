@@ -6,6 +6,7 @@ import com.mockify.backend.dto.request.auth.LoginRequest;
 import com.mockify.backend.dto.request.auth.RegisterRequest;
 import com.mockify.backend.dto.response.auth.AuthResponse;
 import com.mockify.backend.dto.response.auth.UserResponse;
+import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.exception.DuplicateResourceException;
 import com.mockify.backend.exception.ResourceNotFoundException;
 import com.mockify.backend.exception.UnauthorizedException;
@@ -296,6 +297,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
 
+    // TODO: Currently only newPassword is accepted. Add confirmPassword parameter in the future.
     @Override
     @Transactional
     public void resetPassword(String token, String newPassword) {
@@ -321,6 +323,12 @@ public class AuthServiceImpl implements AuthService {
         if (!AUTH_PROVIDER_LOCAL.equals(user.getProviderName())) {
             throw new UnauthorizedException("Password reset not allowed for OAuth users");
         }
+
+        // Check: new password must be different from old password
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new BadRequestException("New password must be different from old password");
+        }
+
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
