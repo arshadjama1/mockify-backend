@@ -23,15 +23,16 @@ public class PublicMockRecordController {
     /**
      * Get a record by ID (Public/Free User)
      */
-    @GetMapping("/{project}/{schema}/records/{recordId}")
+    @GetMapping("/{org}/{project}/{schema}/records/{recordId}")
     public ResponseEntity<MockRecordResponse> getRecord(
+            @PathVariable String org,
             @PathVariable String project,
             @PathVariable String schema,
             @PathVariable UUID recordId) {
 
         log.info("Public user fetching recordId={} for schemaId={}", recordId, schema);
 
-        UUID schemaId = endpointService.resolveSchema(project, schema);
+        UUID schemaId = endpointService.resolveSchema(org, project, schema);
         MockRecordResponse record = publicMockRecordService.getRecordById(schemaId, recordId);
         return ResponseEntity.ok(record);
     }
@@ -39,14 +40,15 @@ public class PublicMockRecordController {
     /**
      * Get all records under a schema (Public/Free User)
      */
-    @GetMapping("/{project}/{schema}/records")
+    @GetMapping("/{org}/{project}/{schema}/records")
     public ResponseEntity<List<MockRecordResponse>> getRecords(
+            @PathVariable String org,
             @PathVariable String project,
             @PathVariable String schema) {
 
         log.info("Public user fetching all records for schemaId={}", schema);
 
-        UUID schemaId = endpointService.resolveSchema(project, schema);
+        UUID schemaId = endpointService.resolveSchema(org, project, schema);
         List<MockRecordResponse> records = publicMockRecordService.getRecordsBySchemaId(schemaId);
         return ResponseEntity.ok(records);
     }

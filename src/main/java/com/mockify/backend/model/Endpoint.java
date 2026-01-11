@@ -18,8 +18,40 @@ public class Endpoint {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
+    /**
+     * Full hierarchical path for URL routing
+     * Examples:
+     * - Organization: "google"
+     * - Project: "google/admin-backend"
+     * - Schema: "google/admin-backend/users"
+     */
+    @Column(name = "full_path", nullable = false, unique = true, length = 500)
+    private String fullPath;
+
+    /**
+     * Individual slug for this resource
+     * Examples: "google", "admin-backend", "users"
+     */
     @Column(nullable = false, length = 255)
     private String slug;
+
+    /**
+     * Resource type for fast filtering without checking FKs
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "resource_type", nullable = false, length = 20)
+    private ResourceType resourceType;
+
+    /**
+     * Parent endpoint in the hierarchy
+     * - Organizations have NULL parent
+     * - Projects have organization as parent
+     * - Schemas have project as parent
+     */
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_endpoint_id")
+    private Endpoint parentEndpoint;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -27,7 +59,7 @@ public class Endpoint {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Three separate FK columns - exactly ONE will be non-null
+    // Resource Foreign Keys (exactly ONE will be non-null)
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id")
@@ -52,18 +84,20 @@ public class Endpoint {
             updatedAt = LocalDateTime.now();
         }
         validateFk();
+        validateResourceType();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
         validateFk();
+        validateResourceType();
     }
 
     /**
      * Validates that exactly one FK is set
      */
-    public void validateFk() {
+    private void validateFk() {
         int count = 0;
         if (organization != null) count++;
         if (project != null) count++;
@@ -74,5 +108,56 @@ public class Endpoint {
                     "Endpoint must reference exactly one entity (organization, project, or schema)"
             );
         }
+    }
+
+    /**
+     * Validates that resource type matches the FK
+     */
+    private void validateResourceType() {
+        if (resourceType == null) {
+            throw new IllegalStateException("Resource type cannot be null");
+        }
+
+        boolean valid = switch (resourceType) {
+            case ORGANIZATION -> organization != null;
+            case PROJECT -> project != null;
+            case SCHEMA -> schema != null;
+        };
+
+        if (!valid) {
+            throw new IllegalStateException(
+                    "Resource type " + resourceType + " does not match foreign key"
+            );
+        }
+    }
+
+    /**
+     * Enum for resource types
+     */
+    public enum ResourceType {
+        ORGANIZATION,
+        PROJECT,
+        SCHEMA
+    }
+
+    /**
+     * Helper method to get the resource ID regardless of type
+     */
+    public UUID getResourceId() {
+        return switch (resourceType) {
+            case ORGANIZATION -> organization != null ? organization.getId() : null;
+            case PROJECT -> project != null ? project.getId() : null;
+            case SCHEMA -> schema != null ? schema.getId() : null;
+        };
+    }
+
+    /**
+     * Helper method to build full path from parent + slug
+     */
+    public static String buildFullPath(Endpoint parent, String slug) {
+        if (parent == null) {
+            return slug;
+        }
+        return parent.getFullPath() + "/" + slug;
     }
 }

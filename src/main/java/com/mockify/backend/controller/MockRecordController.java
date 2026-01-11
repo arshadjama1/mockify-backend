@@ -29,15 +29,16 @@ public class MockRecordController {
     private final EndpointService endpointService;
 
     // Create a new mock record
-    @PostMapping("/{project}/{schema}/records")
+    @PostMapping("/{org}/{project}/{schema}/records")
     public ResponseEntity<MockRecordResponse> createRecord(
+            @PathVariable String org,
             @PathVariable String project,
             @PathVariable String schema,
             @Valid @RequestBody CreateMockRecordRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchema(project, schema);
+        UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.info("User {} creating new mock record under schema {}", userId, schemaId);
 
         MockRecordResponse created = mockRecordService.createRecord(userId, schemaId, request);
@@ -45,15 +46,16 @@ public class MockRecordController {
     }
 
     // Create multiple records in bulk
-    @PostMapping("/{project}/{schema}/records/bulk")
+    @PostMapping("/{org}/{project}/{schema}/records/bulk")
     public ResponseEntity<List<MockRecordResponse>> createRecordsBulk(
+            @PathVariable String org,
             @PathVariable String project,
             @PathVariable String schema,
             @Valid @RequestBody List<CreateMockRecordRequest> requests,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchema(project, schema);
+        UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.info("User {} bulk creating {} records under schema {}", userId, requests.size(), schemaId);
 
         List<MockRecordResponse> created = mockRecordService.createRecordsBulk(userId, schemaId, requests);
@@ -61,8 +63,9 @@ public class MockRecordController {
     }
 
     // Get a record by ID
-    @GetMapping("/{project}/{schema}/records/{recordId}")
+    @GetMapping("/{org}/{project}/{schema}/records/{recordId}")
     public ResponseEntity<MockRecordResponse> getRecordById(
+            @PathVariable String org,
             @PathVariable String project,
             @PathVariable String schema,
             @PathVariable UUID recordId,
@@ -76,14 +79,15 @@ public class MockRecordController {
     }
 
     // Get all records under a specific schema
-    @GetMapping("/{project}/{schema}/records")
+    @GetMapping("/{org}/{project}/{schema}/records")
     public ResponseEntity<List<MockRecordResponse>> getRecords(
+            @PathVariable String org,
             @PathVariable String project,
             @PathVariable String schema,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UUID schemaId = endpointService.resolveSchema(project, schema);
+        UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.debug("User {} fetching all records under schema {}", userId, schemaId);
 
         List<MockRecordResponse> records = mockRecordService.getRecordsBySchemaId(userId, schemaId);
@@ -91,8 +95,9 @@ public class MockRecordController {
     }
 
     // Update an existing mock record
-    @PutMapping("/{project}/{schema}/records/{recordId}")
+    @PutMapping("/{org}/{project}/{schema}/records/{recordId}")
     public ResponseEntity<MockRecordResponse> updateRecord(
+            @PathVariable String org,
             @PathVariable String project,
             @PathVariable String schema,
             @PathVariable UUID recordId,
@@ -107,8 +112,9 @@ public class MockRecordController {
     }
 
     // Delete a record by ID
-    @DeleteMapping("/{project}/{schema}/records/{recordId}")
+    @DeleteMapping("/{org}/{project}/{schema}/records/{recordId}")
     public ResponseEntity<Void> deleteRecord(
+            @PathVariable String org,
             @PathVariable String project,
             @PathVariable String schema,
             @PathVariable UUID recordId,
