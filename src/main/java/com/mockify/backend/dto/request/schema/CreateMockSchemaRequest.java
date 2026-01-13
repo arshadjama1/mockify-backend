@@ -10,6 +10,5 @@ import java.util.UUID;
 @Setter
 public class CreateMockSchemaRequest {
     private String name;
-    private UUID projectId;
     private Map<String, Object> schemaJson;
 }

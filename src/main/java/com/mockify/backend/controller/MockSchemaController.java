@@ -38,7 +38,10 @@ public class MockSchemaController {
         UUID userId = UUID.fromString(userDetails.getUsername());
         log.info("User {} creating schema '{}' under project {}", userId, request.getName(), project);
 
-        MockSchemaResponse response = mockSchemaService.createSchema(userId, request);
+        // Resolve the project and extract projectId to create the schema under the correct project
+        UUID projectId = endpointService.resolveProject(org, project);
+
+        MockSchemaResponse response = mockSchemaService.createSchema(userId, projectId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

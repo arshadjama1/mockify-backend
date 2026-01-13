@@ -9,5 +9,4 @@ import java.util.UUID;
 @Setter
 public class CreateProjectRequest {
     private String name;
-    private UUID organizationId;
 }

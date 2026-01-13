@@ -35,7 +35,11 @@ public class EndpointServiceImpl implements EndpointService {
         endpoint.setParentEndpoint(null); // Organizations are root level
         endpoint.setOrganization(organization);
 
+        if (endpointRepository.existsByFullPath(fullPath)) {
+            throw new DuplicateResourceException("Endpoint already exists: " + fullPath);
+        }
         endpointRepository.save(endpoint);
+
         log.debug("Created organization endpoint: {}", fullPath);
     }
 
@@ -58,7 +62,11 @@ public class EndpointServiceImpl implements EndpointService {
         endpoint.setParentEndpoint(orgEndpoint);
         endpoint.setProject(project);
 
+        if (endpointRepository.existsByFullPath(fullPath)) {
+            throw new DuplicateResourceException("Endpoint already exists: " + fullPath);
+        }
         endpointRepository.save(endpoint);
+
         log.debug("Created project endpoint: {}", fullPath);
     }
 
@@ -81,7 +89,11 @@ public class EndpointServiceImpl implements EndpointService {
         endpoint.setParentEndpoint(projectEndpoint);
         endpoint.setSchema(schema);
 
+        if (endpointRepository.existsByFullPath(fullPath)) {
+            throw new DuplicateResourceException("Endpoint already exists: " + fullPath);
+        }
         endpointRepository.save(endpoint);
+
         log.debug("Created schema endpoint: {}", fullPath);
     }
 

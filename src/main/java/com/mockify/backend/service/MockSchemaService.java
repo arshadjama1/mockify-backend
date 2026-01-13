@@ -12,7 +12,7 @@ import java.util.UUID;
 public interface MockSchemaService {
 
     //Create new schema under a project
-    MockSchemaResponse createSchema(UUID userId, CreateMockSchemaRequest request);
+    MockSchemaResponse createSchema(UUID userId, UUID projectId, CreateMockSchemaRequest request);
 
     // Get all schemas for a project
     List<MockSchemaResponse> getSchemasByProjectId(UUID userId, UUID projectId);

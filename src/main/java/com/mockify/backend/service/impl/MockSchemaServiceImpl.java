@@ -62,8 +62,8 @@ public class MockSchemaServiceImpl implements MockSchemaService {
      */
     @Override
     @Transactional
-    public MockSchemaResponse createSchema(UUID userId, CreateMockSchemaRequest request) {
-        Project project = getProjectWithAccessCheck(request.getProjectId(), userId);
+    public MockSchemaResponse createSchema(UUID userId, UUID projectId, CreateMockSchemaRequest request) {
+        Project project = getProjectWithAccessCheck(projectId, userId);
 
         // Prevent duplicate schema name in the same project
         boolean exists = mockSchemaRepository.findByNameAndProjectId(request.getName(), project.getId()) != null;
@@ -75,7 +75,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
         String slug = slugService.generateSlug(request.getName());
 
         // Check uniqueness within project
-        if (mockSchemaRepository.existsBySlugAndProjectId(slug, request.getProjectId())) {
+        if (mockSchemaRepository.existsBySlugAndProjectId(slug, projectId)) {
            slug = slugService.generateUniqueSlug(slug);
         }
 
