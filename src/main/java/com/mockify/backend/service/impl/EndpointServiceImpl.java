@@ -22,102 +22,180 @@ public class EndpointServiceImpl implements EndpointService {
     @Override
     @Transactional
     public void createEndpoint(Organization organization) {
-        if (endpointRepository.existsBySlug(organization.getSlug())) {
-            throw new DuplicateResourceException("Endpoint slug already exists: " + organization.getSlug());
+        String fullPath = organization.getSlug();
+
+        if (endpointRepository.existsByFullPath(fullPath)) {
+            throw new DuplicateResourceException("Endpoint path already exists: " + fullPath);
         }
 
         Endpoint endpoint = new Endpoint();
+        endpoint.setFullPath(fullPath);
         endpoint.setSlug(organization.getSlug());
+        endpoint.setResourceType(Endpoint.ResourceType.ORGANIZATION);
+        endpoint.setParentEndpoint(null); // Organizations are root level
         endpoint.setOrganization(organization);
+
+        if (endpointRepository.existsByFullPath(fullPath)) {
+            throw new DuplicateResourceException("Endpoint already exists: " + fullPath);
+        }
         endpointRepository.save(endpoint);
 
-        log.debug("Created endpoint for organization: {}", organization.getSlug());
+        log.debug("Created organization endpoint: {}", fullPath);
     }
 
     @Override
     @Transactional
     public void createEndpoint(Project project) {
+        // Find parent organization endpoint
+        Endpoint orgEndpoint = endpointRepository
+                .findByOrganizationId(project.getOrganization().getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Parent organization endpoint not found"
+                ));
+
+        String fullPath = Endpoint.buildFullPath(orgEndpoint, project.getSlug());
+
         Endpoint endpoint = new Endpoint();
+        endpoint.setFullPath(fullPath);
         endpoint.setSlug(project.getSlug());
+        endpoint.setResourceType(Endpoint.ResourceType.PROJECT);
+        endpoint.setParentEndpoint(orgEndpoint);
         endpoint.setProject(project);
+
+        if (endpointRepository.existsByFullPath(fullPath)) {
+            throw new DuplicateResourceException("Endpoint already exists: " + fullPath);
+        }
         endpointRepository.save(endpoint);
 
-        log.debug("Created endpoint for project: {}", project.getSlug());
+        log.debug("Created project endpoint: {}", fullPath);
     }
 
     @Override
     @Transactional
     public void createEndpoint(MockSchema schema) {
+        // Find parent project endpoint
+        Endpoint projectEndpoint = endpointRepository
+                .findByProjectId(schema.getProject().getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Parent project endpoint not found"
+                ));
+
+        String fullPath = Endpoint.buildFullPath(projectEndpoint, schema.getSlug());
+
         Endpoint endpoint = new Endpoint();
+        endpoint.setFullPath(fullPath);
         endpoint.setSlug(schema.getSlug());
+        endpoint.setResourceType(Endpoint.ResourceType.SCHEMA);
+        endpoint.setParentEndpoint(projectEndpoint);
         endpoint.setSchema(schema);
+
+        if (endpointRepository.existsByFullPath(fullPath)) {
+            throw new DuplicateResourceException("Endpoint already exists: " + fullPath);
+        }
         endpointRepository.save(endpoint);
 
-        log.debug("Created endpoint for schema: {}", schema.getSlug());
+        log.debug("Created schema endpoint: {}", fullPath);
     }
 
     @Override
     @Transactional
     public void updateEndpointSlug(UUID resourceId, String resourceType, String newSlug) {
-        Endpoint endpoint = switch (resourceType.toLowerCase()) {
-            case "organization" -> endpointRepository.findByOrganizationId(resourceId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Endpoint not found"));
-            case "project" -> endpointRepository.findByProjectId(resourceId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Endpoint not found"));
-            case "schema" -> endpointRepository.findBySchemaId(resourceId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Endpoint not found"));
-            default -> throw new IllegalArgumentException("Invalid resource type");
-        };
+        Endpoint endpoint = findEndpointByResource(resourceId, resourceType);
 
+        // Build new full path
+        String newFullPath;
+        if (endpoint.getParentEndpoint() == null) {
+            newFullPath = newSlug;
+        } else {
+            newFullPath = Endpoint.buildFullPath(endpoint.getParentEndpoint(), newSlug);
+        }
+
+        // Check for conflicts
+        if (endpointRepository.existsByFullPath(newFullPath)) {
+            throw new DuplicateResourceException("Endpoint path already exists: " + newFullPath);
+        }
+
+        String oldFullPath = endpoint.getFullPath();
         endpoint.setSlug(newSlug);
+        endpoint.setFullPath(newFullPath);
         endpointRepository.save(endpoint);
 
-        log.debug("Updated endpoint slug to: {}", newSlug);
+        // Update all child endpoints recursively
+        updateChildPaths(endpoint, oldFullPath, newFullPath);
+
+        log.debug("Updated endpoint slug from {} to {}", oldFullPath, newFullPath);
+    }
+
+    /**
+     * Recursively update all child endpoint paths when parent changes
+     */
+    private void updateChildPaths(Endpoint parent, String oldParentPath, String newParentPath) {
+
+        // Load direct children
+        var children = endpointRepository.findByParentEndpoint(parent);
+
+        for (Endpoint child : children) {
+            String oldChildPath = child.getFullPath();
+
+            // Replace only the parent prefix
+            String newChildPath = oldChildPath.replaceFirst(
+                    "^" + java.util.regex.Pattern.quote(oldParentPath),
+                    newParentPath
+            );
+
+            // Update child path
+            child.setFullPath(newChildPath);
+            endpointRepository.save(child);
+
+            log.debug("Updated child endpoint path: {} → {}", oldChildPath, newChildPath);
+
+            // Recurse into grandchildren
+            updateChildPaths(child, oldChildPath, newChildPath);
+        }
     }
 
     @Override
     @Transactional
     public void deleteEndpoint(UUID resourceId, String resourceType) {
-        Endpoint endpoint = switch (resourceType.toLowerCase()) {
-            case "organization" -> endpointRepository.findByOrganizationId(resourceId)
-                    .orElse(null);
-            case "project" -> endpointRepository.findByProjectId(resourceId)
-                    .orElse(null);
-            case "schema" -> endpointRepository.findBySchemaId(resourceId)
-                    .orElse(null);
-            default -> null;
-        };
+        Endpoint endpoint = findEndpointByResource(resourceId, resourceType);
 
         if (endpoint != null) {
             endpointRepository.delete(endpoint);
-            log.debug("Deleted endpoint: {}", endpoint.getSlug());
+            log.debug("Deleted endpoint: {}", endpoint.getFullPath());
         }
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UUID resolveOrganization(String orgSlug) {
-        Endpoint org = endpointRepository.findBySlug(orgSlug)
-                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgSlug));
+        Endpoint endpoint = endpointRepository.findByFullPath(orgSlug)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Organization not found: " + orgSlug
+                ));
 
-        return org.getOrganization().getId();
+        if (endpoint.getResourceType() != Endpoint.ResourceType.ORGANIZATION) {
+            throw new ResourceNotFoundException(
+                    "Path does not point to an organization: " + orgSlug
+            );
+        }
+
+        return endpoint.getOrganization().getId();
     }
 
     @Override
     @Transactional(readOnly = true)
     public UUID resolveProject(String orgSlug, String projectSlug) {
+        String fullPath = orgSlug + "/" + projectSlug;
 
-        UUID orgId = resolveOrganization(orgSlug);
+        Endpoint endpoint = endpointRepository.findByFullPath(fullPath)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Project not found: " + fullPath
+                ));
 
-        Endpoint endpoint = endpointRepository
-                .findByOrganizationIdAndSlug(orgId, projectSlug)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Project not found: " + projectSlug + " under org " + orgSlug
-                        )
-                );
-
-        if (endpoint.getProject() == null) {
-            throw new ResourceNotFoundException("Slug does not point to a project");
+        if (endpoint.getResourceType() != Endpoint.ResourceType.PROJECT) {
+            throw new ResourceNotFoundException(
+                    "Path does not point to a project: " + fullPath
+            );
         }
 
         return endpoint.getProject().getId();
@@ -125,22 +203,35 @@ public class EndpointServiceImpl implements EndpointService {
 
     @Override
     @Transactional(readOnly = true)
-    public UUID resolveSchema(String projectSlug, String schemaSlug) {
+    public UUID resolveSchema(String orgSlug, String projectSlug, String schemaSlug) {
+        String fullPath = orgSlug + "/" + projectSlug + "/" + schemaSlug;
 
-        UUID projectId = resolveProject(projectSlug, schemaSlug);
+        Endpoint endpoint = endpointRepository.findByFullPath(fullPath)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Schema not found: " + fullPath
+                ));
 
-        Endpoint endpoint = endpointRepository
-                .findByProjectIdAndSlug(projectId, schemaSlug)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Schema not found: " + schemaSlug + " under project " + projectSlug
-                        )
-                );
-
-        if (endpoint.getSchema() == null) {
-            throw new ResourceNotFoundException("Slug does not point to a schema");
+        if (endpoint.getResourceType() != Endpoint.ResourceType.SCHEMA) {
+            throw new ResourceNotFoundException(
+                    "Path does not point to a schema: " + fullPath
+            );
         }
 
         return endpoint.getSchema().getId();
+    }
+
+    /**
+     * Helper to find endpoint by resource ID and type
+     */
+    private Endpoint findEndpointByResource(UUID resourceId, String resourceType) {
+        return switch (resourceType.toLowerCase()) {
+            case "organization" -> endpointRepository.findByOrganizationId(resourceId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Endpoint not found"));
+            case "project" -> endpointRepository.findByProjectId(resourceId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Endpoint not found"));
+            case "schema" -> endpointRepository.findBySchemaId(resourceId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Endpoint not found"));
+            default -> throw new IllegalArgumentException("Invalid resource type: " + resourceType);
+        };
     }
 }

@@ -39,7 +39,10 @@ public class ProjectController {
         UUID userId = UUID.fromString(userDetails.getUsername());
         log.info("User {} creating new project '{}' under organization {}", userId, request.getName(), org);
 
-        ProjectResponse created = projectService.createProject(userId, request);
+        // Resolve the organization and extract orgId to create the project under the correct org
+        UUID orgId = endpointService.resolveOrganization(org);
+
+        ProjectResponse created = projectService.createProject(userId, orgId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

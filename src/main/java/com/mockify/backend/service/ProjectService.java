@@ -11,7 +11,7 @@ import java.util.UUID;
 public interface ProjectService {
 
     // Create new project under an organization
-    ProjectResponse createProject(UUID userId, CreateProjectRequest request);
+    ProjectResponse createProject(UUID userId, UUID orgId, CreateProjectRequest request);
 
     // Get all projects under a specific organization
     List<ProjectResponse> getProjectsByOrganizationId(UUID userId, UUID organizationId);

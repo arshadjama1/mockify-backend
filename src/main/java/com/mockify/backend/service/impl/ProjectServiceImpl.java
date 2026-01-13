@@ -38,11 +38,11 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
-    public ProjectResponse createProject(UUID userId, CreateProjectRequest request) {
-        log.info("User {} creating project '{}' under organization {}", userId, request.getName(), request.getOrganizationId());
+    public ProjectResponse createProject(UUID userId, UUID orgId, CreateProjectRequest request) {
+        log.info("User {} creating project '{}' under organization {}", userId, request.getName(), orgId);
 
-        Organization organization = organizationRepository.findById(request.getOrganizationId())
-                .orElseThrow(() -> new ResourceNotFoundException("Organization not found with id: " + request.getOrganizationId()));
+        Organization organization = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found with id: " + orgId));
 
         // Ownership check
         accessControlService.checkOrganizationAccess(userId, organization, "Organization");
@@ -51,12 +51,12 @@ public class ProjectServiceImpl implements ProjectService {
         String slug = slugService.generateSlug(request.getName());
 
         // Check slug uniqueness (organizations must have unique project-slugs)
-        if (projectRepository.existsBySlugAndOrganizationId(slug, request.getOrganizationId())) {
+        if (projectRepository.existsBySlugAndOrganizationId(slug, orgId)) {
             slug = slugService.generateUniqueSlug(slug);
         }
 
         // Check for duplicate project name in same organization
-        Project existing = projectRepository.findByNameAndOrganizationId(request.getName(), request.getOrganizationId());
+        Project existing = projectRepository.findByNameAndOrganizationId(request.getName(), orgId);
         if (existing != null) {
             throw new BadRequestException("Project with the same name already exists under this organization.");
         }
