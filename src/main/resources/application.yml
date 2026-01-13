@@ -77,6 +77,10 @@ app:
   frontend:
     url: http://localhost:3000
     reset-password-url: http://localhost:3000/reset-password
+  verification:
+    email:
+      ttl-minutes: 30
+      frontend-url: http://localhost:3000/verify-email
 
 # Cleanup Scheduling
 cleanup:

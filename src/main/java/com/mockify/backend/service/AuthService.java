@@ -9,8 +9,11 @@ import java.util.UUID;
 
 public interface AuthService {
 
-    // Register a new user
-    AuthResult registerAndLogin(RegisterRequest request);
+    // user registration request
+    public void requestRegistration(RegisterRequest request);
+
+    // Completes the user registration after successful email verification
+    public AuthResult completeRegistration(String token);
 
     // Login with email & password
     AuthResult login(LoginRequest request);
