@@ -1,5 +1,6 @@
 package com.mockify.backend.security;
 
+import com.mockify.backend.common.enums.UserRole;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -8,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.UUID;
@@ -35,17 +35,17 @@ public class JwtTokenProvider {
     }
 
     // Generate JWT access token for a user
-    public String generateAccessToken(UUID userId) {
-        return generateToken(userId, accessTokenExpiration, "access");
+    public String generateAccessToken(UUID userId, UserRole role) {
+        return generateToken(userId, role, accessTokenExpiration, "access");
     }
 
     // Generate JWT refresh token for a user
-    public String generateRefreshToken(UUID userId) {
-        return generateToken(userId, refreshTokenExpiration, "refresh");
+    public String generateRefreshToken(UUID userId, UserRole role) {
+        return generateToken(userId, role, refreshTokenExpiration, "refresh");
     }
 
     // Token generation core logic
-    private String generateToken(UUID userId, long expiration, String tokenType) {
+    private String generateToken(UUID userId, UserRole role, long expiration, String tokenType) {
         Date now = new Date();
         Date expirationTime = new Date(now.getTime() + expiration);
 
@@ -58,6 +58,7 @@ public class JwtTokenProvider {
                 .notBefore(now)
                 .id(UUID.randomUUID().toString())
                 .claim("type", tokenType)
+                .claim("role", role.name())
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -157,4 +158,12 @@ public class JwtTokenProvider {
             return null;
         }
     }
+
+    // Return user's role without DB lookup
+    public UserRole getUserRole(String token) {
+        Claims claims = getAllClaims(token);
+        String role = claims.get("role", String.class);
+        return UserRole.valueOf(role);
+    }
+
 }

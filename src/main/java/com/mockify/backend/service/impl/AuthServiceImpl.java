@@ -1,8 +1,9 @@
 package com.mockify.backend.service.impl;
 
+import com.mockify.backend.common.enums.UserRole;
 import com.mockify.backend.dto.request.auth.PendingRegistration;
-import com.mockify.backend.dto.response.AuthResult;
-import com.mockify.backend.dto.response.TokenPair;
+import com.mockify.backend.dto.response.auth.AuthResult;
+import com.mockify.backend.dto.response.auth.TokenPair;
 import com.mockify.backend.dto.request.auth.LoginRequest;
 import com.mockify.backend.dto.request.auth.RegisterRequest;
 import com.mockify.backend.dto.response.auth.AuthResponse;
@@ -115,6 +116,8 @@ public class AuthServiceImpl implements AuthService {
         User user = new User();
         user.setName(pending.getName());
         user.setEmail(pending.getEmail());
+        user.setRole(UserRole.USER);            // set role USER to prevent accidental admin creation
+        user.setEmailVerified(true);
         user.setPassword(pending.getEncodedPassword());
         user.setProviderName(AUTH_PROVIDER_LOCAL);
         user.setUsername(
@@ -126,8 +129,8 @@ public class AuthServiceImpl implements AuthService {
 
         // Generate tokens
         TokenPair tokens = new TokenPair(
-                jwtTokenProvider.generateAccessToken(savedUser.getId()),
-                jwtTokenProvider.generateRefreshToken(savedUser.getId())
+                jwtTokenProvider.generateAccessToken(savedUser.getId(), UserRole.USER),
+                jwtTokenProvider.generateRefreshToken(savedUser.getId(), UserRole.USER)
         );
 
         // Build cookie
@@ -146,7 +149,7 @@ public class AuthServiceImpl implements AuthService {
 
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResult login(LoginRequest request) {
 
         log.info("Login attempt for email: {}", request.getEmail());
@@ -156,8 +159,8 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
 
         // Check if it's a local user (has password)
-        if (user.getPassword() == null || user.getProviderName() == null || !AUTH_PROVIDER_LOCAL.equals(user.getProviderName())) {
-            throw new UnauthorizedException("This account uses OAuth login. Please login with " + user.getProviderName());
+        if (!AUTH_PROVIDER_LOCAL.equals(user.getProviderName())) {
+            throw new UnauthorizedException("This account uses " + user.getProviderName() + " login. Please login with that provider.");
         }
 
         // Validate password
@@ -166,10 +169,10 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException("Invalid email or password");
         }
 
-        // Generate tokens
+        // Generate token based on role
         TokenPair tokens = new TokenPair(
-                jwtTokenProvider.generateAccessToken(user.getId()),
-                jwtTokenProvider.generateRefreshToken(user.getId())
+                jwtTokenProvider.generateAccessToken(user.getId(), user.getRole()),
+                jwtTokenProvider.generateRefreshToken(user.getId(), user.getRole())
         );
 
         // Build cookie
@@ -189,7 +192,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResult refresh(String refreshToken) {
 
         log.info("Token refresh requested");
@@ -213,18 +216,21 @@ public class AuthServiceImpl implements AuthService {
 
         // User validation
         UUID userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
-        userRepository.findById(userId)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
-        // Generate new tokens
+        // Generate token based on role
         TokenPair tokens = new TokenPair(
-                jwtTokenProvider.generateAccessToken(userId),
-                jwtTokenProvider.generateRefreshToken(userId)
+                jwtTokenProvider.generateAccessToken(userId, user.getRole()),
+                jwtTokenProvider.generateRefreshToken(userId, user.getRole())
         );
 
         // Blacklist old refresh token after new token generation
         Date expiration = jwtTokenProvider.getExpiration(refreshToken);
         Duration ttl = Duration.between(Instant.now(), expiration.toInstant());
+        if (ttl.isNegative() || ttl.isZero()) {
+            throw new UnauthorizedException("Refresh token expired");
+        }
         refreshTokenBlacklist.blacklist(jti, ttl);
 
         // Build cookie
@@ -315,6 +321,9 @@ public class AuthServiceImpl implements AuthService {
                 log.info("Password reset skipped for oauth user email={}", email);
                 return;
             }
+
+            // TODO: Enable later to skip processing if email is not verified
+            //  if(user.isEmailVerified()) return;
 
             // Generate raw token
             String rawToken = UUID.randomUUID().toString();

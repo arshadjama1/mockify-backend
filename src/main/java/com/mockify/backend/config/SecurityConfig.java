@@ -64,6 +64,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/mock/**").permitAll()
                         .requestMatchers("/api/endpoints/lookup/**").permitAll()
 
+                        // Admin-only endpoints
+                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/actuator/**").hasAuthority("ROLE_ADMIN")
+
                         // OAuth2 endpoints must be public for the handshake
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/oauth2/**").permitAll()
@@ -78,9 +82,8 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
 
-                        // Allows all Actuator endpoints only for DEV without requiring auth
+                        // Allows some Actuator endpoints only for DEV without requiring auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/actuator/**").permitAll() // TODO: Set role to ADMIN in prod (Must)
 
                         // All other endpoints require authentication
                         .anyRequest().authenticated()

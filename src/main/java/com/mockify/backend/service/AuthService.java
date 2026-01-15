@@ -1,6 +1,6 @@
 package com.mockify.backend.service;
 
-import com.mockify.backend.dto.response.AuthResult;
+import com.mockify.backend.dto.response.auth.AuthResult;
 import com.mockify.backend.dto.request.auth.LoginRequest;
 import com.mockify.backend.dto.request.auth.RegisterRequest;
 import com.mockify.backend.dto.response.auth.UserResponse;
