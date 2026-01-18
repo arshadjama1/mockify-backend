@@ -12,11 +12,13 @@ ALTER TABLE users
 ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'USER';
 
 -- Insert default admin user only if it does not already exist
-INSERT INTO users (id, name, email, password, role, provider_name, created_at)
+INSERT INTO users (id, name, username, email, email_verified, password, role, provider_name, created_at)
 SELECT
     gen_random_uuid(),
     'Mockify Admin',
+    'mockify',
     'mockify.noreply@gmail.com',
+     true,
     '$2a$10$REPLACE_WITH_BCRYPT_HASH',          -- Replace with real bcrypt hash (use reset password)
     'ADMIN',
     'local',

@@ -24,7 +24,7 @@ public class AdminController {
          Basic admin health endpoint.
          Used to verify ADMIN access works.
      */
-    @GetMapping("ping")
+    @GetMapping("/ping")
     public Map<String, Object> adminPing(){
         return Map.of(
                 "status", "ok",
