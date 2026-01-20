@@ -28,6 +28,7 @@ public interface OrganizationMapper {
 
     // Project summary for nested response
     @Mapping(target = "schemaCount", expression = "java(project.getMockSchemas().size())")
+    @Mapping(target = "slug", source = "slug")
     OrganizationDetailResponse.ProjectSummary toProjectSummary(Project project);
 
     List<OrganizationDetailResponse.ProjectSummary> toProjectSummaryList(List<Project> projects);
