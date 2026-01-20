@@ -2,10 +2,10 @@ package com.mockify.backend.security.oauth2;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockify.backend.common.enums.UserRole;
 import com.mockify.backend.mapper.UserMapper;
 import com.mockify.backend.model.User;
 import com.mockify.backend.repository.UserRepository;
-import com.mockify.backend.dto.response.auth.AuthResponse;
 import com.mockify.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -69,6 +68,8 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         User user = userRepository.findByEmail(email).orElseGet(() -> {
             User newUser = new User();
             newUser.setEmail(email);
+            newUser.setEmailVerified(true);
+            newUser.setRole(UserRole.USER);
             newUser.setName(name != null ? name : email);
             newUser.setProviderName("google");
             newUser.setProviderId(providerId);
@@ -82,7 +83,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         });
 
         // Issue JWTs
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), UserRole.USER);
 
         // TODO: SECURITY - Set token in HttpOnly cookie instead of URL params
         String encodedAccessToken = URLEncoder.encode(accessToken, StandardCharsets.UTF_8);

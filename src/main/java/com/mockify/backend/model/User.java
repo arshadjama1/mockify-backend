@@ -1,6 +1,7 @@
 package com.mockify.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.mockify.backend.common.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -26,8 +27,16 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
     @Column(name = "password")
     private String password; // Now nullable for OAuth users
+
+    // Default role is USER to prevent accidental admin creation
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserRole role = UserRole.USER;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

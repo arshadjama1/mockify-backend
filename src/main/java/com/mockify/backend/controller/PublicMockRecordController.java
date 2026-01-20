@@ -3,6 +3,7 @@ package com.mockify.backend.controller;
 import com.mockify.backend.dto.response.record.MockRecordResponse;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.PublicMockRecordService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @RequestMapping("/api/mock")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Public MockRecord")
 public class PublicMockRecordController {
 
     private final PublicMockRecordService publicMockRecordService;

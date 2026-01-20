@@ -1,7 +1,7 @@
 package com.mockify.backend.controller;
 
 import com.mockify.backend.dto.request.auth.*;
-import com.mockify.backend.dto.response.AuthResult;
+import com.mockify.backend.dto.response.auth.AuthResult;
 import com.mockify.backend.dto.response.auth.AuthResponse;
 import com.mockify.backend.dto.response.auth.UserResponse;
 import com.mockify.backend.security.CookieUtil;

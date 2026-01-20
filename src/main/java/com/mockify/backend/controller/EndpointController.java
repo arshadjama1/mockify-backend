@@ -1,7 +1,7 @@
 package com.mockify.backend.controller;
 
-import com.mockify.backend.model.Endpoint;
 import com.mockify.backend.repository.EndpointRepository;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +11,7 @@ import java.util.Map;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/endpoints")
+@Tag(name = "Endpoint")
 public class EndpointController {
 
     private final EndpointRepository endpointRepository;
