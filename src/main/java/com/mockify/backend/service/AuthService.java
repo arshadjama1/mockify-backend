@@ -13,7 +13,7 @@ public interface AuthService {
     public void requestRegistration(RegisterRequest request);
 
     // Completes the user registration after successful email verification
-    public AuthResult completeRegistration(String token);
+    public void completeRegistration(String token);
 
     // Login with email & password
     AuthResult login(LoginRequest request);

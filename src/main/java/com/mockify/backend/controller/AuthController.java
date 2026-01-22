@@ -40,16 +40,12 @@ public class AuthController {
     }
 
     @GetMapping("/register/verify")
-    public ResponseEntity<AuthResponse> verify(
+    public ResponseEntity<?> verify(
             @RequestParam String token) {
 
-        AuthResult result =
-                authService.completeRegistration(token);
+        authService.completeRegistration(token);
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE,
-                        result.refreshCookie().toString())
-                .body(result.response());
+        return ResponseEntity.ok("Email verified successfully");
     }
 
     @PostMapping("/login")
