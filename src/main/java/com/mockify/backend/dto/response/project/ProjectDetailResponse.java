@@ -27,6 +27,7 @@ public class ProjectDetailResponse {
     public static class MockSchemaSummary {
         private UUID id;
         private String name;
+        private String slug;
         private int recordCount;
         private LocalDateTime createdAt;
     }

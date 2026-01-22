@@ -37,6 +37,7 @@ public interface ProjectMapper {
     ProjectDetailResponse.OrganizationSummary toOrganizationSummary(Organization organization);
 
     @Mapping(target = "recordCount", expression = "java(schema.getMockRecords().size())")
+    @Mapping(target = "slug", source = "slug")
     ProjectDetailResponse.MockSchemaSummary toMockSchemaSummary(MockSchema schema);
 
     List<ProjectDetailResponse.MockSchemaSummary> toMockSchemaSummaryList(List<MockSchema> schemas);

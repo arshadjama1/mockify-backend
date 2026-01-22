@@ -22,6 +22,7 @@ public class OrganizationDetailResponse {
     public static class ProjectSummary {
         private UUID id;
         private String name;
+        private String slug;
         private int schemaCount;
         private LocalDateTime createdAt;
     }
