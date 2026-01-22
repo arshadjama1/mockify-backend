@@ -98,7 +98,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthResult completeRegistration(String token) {
+    public void completeRegistration(String token) {
 
         // Validate verification token and consume it atomically.
         // Token is removed immediately after successful validation.
@@ -125,26 +125,8 @@ public class AuthServiceImpl implements AuthService {
         );
 
         // Save user info in database
-        User savedUser = userRepository.save(user);
+        userRepository.save(user);
 
-        // Generate tokens
-        TokenPair tokens = new TokenPair(
-                jwtTokenProvider.generateAccessToken(savedUser.getId(), UserRole.USER),
-                jwtTokenProvider.generateRefreshToken(savedUser.getId(), UserRole.USER)
-        );
-
-        // Build cookie
-        ResponseCookie cookie =
-                cookieUtil.createRefreshToken(tokens.refreshToken());
-
-        AuthResponse response = AuthResponse.builder()
-                .accessToken(tokens.accessToken())
-                .tokenType(TOKEN_TYPE_BEARER)
-                .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
-                .user(userMapper.toResponse(savedUser))
-                .build();
-
-        return new AuthResult(response, cookie);
     }
 
 
@@ -161,6 +143,11 @@ public class AuthServiceImpl implements AuthService {
         // Check if it's a local user (has password)
         if (!AUTH_PROVIDER_LOCAL.equals(user.getProviderName())) {
             throw new UnauthorizedException("This account uses " + user.getProviderName() + " login. Please login with that provider.");
+        }
+
+        //  BLOCK unverified users
+        if (!user.isEmailVerified()) {
+            throw new UnauthorizedException("Please verify your email before logging in");
         }
 
         // Validate password
