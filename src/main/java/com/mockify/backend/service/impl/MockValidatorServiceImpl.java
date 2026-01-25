@@ -2,11 +2,12 @@ package com.mockify.backend.service.impl;
 
 import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.service.MockValidatorService;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 import java.util.*;
-import java.util.regex.Pattern;
+
 
 @Service
 public class MockValidatorServiceImpl implements MockValidatorService {
@@ -17,13 +18,36 @@ public class MockValidatorServiceImpl implements MockValidatorService {
      * This keeps the system strict and prevents users from defining random or unsafe types.
      */
 
-    private static final Set<String> ALLOWED_TYPES = Set.of(
-            "string", "number", "boolean", "array", "object",
-            "email", "uuid", "datetime", "null", "json", "enum"
-    );
+    private enum ALLOWED_TYPES {
 
-    private static final Pattern EMAIL_PATTERN =
-            Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
+        STRING("string"),
+        NUMBER("number"),
+        BOOLEAN("boolean"),
+        ARRAY("array"),
+        OBJECT("object"),
+        EMAIL("email"),
+        UUID("uuid"),
+        DATETIME("datetime"),
+        NULL("null"),
+        JSON("json"),
+        ENUM("enum");
+
+        private final String value;
+
+        ALLOWED_TYPES(String value) {
+            this.value = value;
+        }
+
+        public static ALLOWED_TYPES from(String value) {
+            for (ALLOWED_TYPES type : values()) {
+                if (type.value.equalsIgnoreCase(value)) {
+                    return type;
+                }
+            }
+            throw new IllegalArgumentException("Invalid schema type: " + value);
+        }
+    }
+
 
     // validateSchemaDefinition
 
@@ -43,34 +67,28 @@ public class MockValidatorServiceImpl implements MockValidatorService {
                 throw new BadRequestException("Schema field name cannot be empty");
             }
 
-            String type;
+            ALLOWED_TYPES type;
 
 
             if (definition instanceof String strType) {
-                type = strType.toLowerCase();
-            }
-            else if (definition instanceof Map<?, ?> defMap) {
+                type = parseType(field, strType);
+            } else if (definition instanceof Map<?, ?> defMap) {
 
                 Object typeObj = defMap.get("type");
                 if (!(typeObj instanceof String)) {
                     throw new BadRequestException("Field '" + field + "' must define a type");
                 }
 
-                type = typeObj.toString().toLowerCase();
+                type = parseType(field, typeObj.toString());
 
-                if ("enum".equals(type)) {
+                if (type == ALLOWED_TYPES.ENUM) {
                     Object values = defMap.get("values");
                     if (!(values instanceof List<?> list) || list.isEmpty()) {
                         throw new BadRequestException("Enum field '" + field + "' must define non-empty values");
                     }
                 }
-            }
-            else {
+            } else {
                 throw new BadRequestException("Invalid schema format for field '" + field + "'");
-            }
-
-            if (!ALLOWED_TYPES.contains(type)) {
-                throw new BadRequestException("Invalid type for field '" + field + "'. Allowed: " + ALLOWED_TYPES);
             }
         }
     }
@@ -101,20 +119,34 @@ public class MockValidatorServiceImpl implements MockValidatorService {
 
             Object value = recordJson.get(field);
 
-            String type;
+            ALLOWED_TYPES type;
             List<?> enumValues = null;
 
             if (schemaDef instanceof String strType) {
-                type = strType.toLowerCase();
-            }
-            else if (schemaDef instanceof Map<?, ?> defMap) {
-                type = defMap.get("type").toString().toLowerCase();
+                type = parseType(field, strType);
+            } else if (schemaDef instanceof Map<?, ?> defMap) {
 
-                if ("enum".equals(type)) {
+                Object typeObj = defMap.get("type");
+
+                if (typeObj == null) {
+                    throw new BadRequestException(
+                            "Field '" + field + "' schema must define a 'type' property"
+                    );
+                }
+
+                if (!(typeObj instanceof String)) {
+                    throw new BadRequestException(
+                            "Field '" + field + "' schema 'type' must be a string"
+                    );
+                }
+
+                type = parseType(field, (String) typeObj);
+
+
+                if (type == ALLOWED_TYPES.ENUM) {
                     enumValues = (List<?>) defMap.get("values");
                 }
-            }
-            else {
+            } else {
                 throw new BadRequestException("Invalid schema definition for field '" + field + "'");
             }
 
@@ -132,9 +164,9 @@ public class MockValidatorServiceImpl implements MockValidatorService {
 
     // validateValueByType
 
-    private void validateValueByType(String field, String type, Object value, List<?> enumValues) {
+    private void validateValueByType(String field, ALLOWED_TYPES type, Object value, List<?> enumValues) {
 
-        if ("null".equals(type)) {
+        if (type == ALLOWED_TYPES.NULL) {
             if (value != null) {
                 throw new BadRequestException("Field '" + field + "' must be null");
             }
@@ -147,56 +179,75 @@ public class MockValidatorServiceImpl implements MockValidatorService {
 
         switch (type) {
 
-            case "string" -> require(value instanceof String, field, "string");
+            case STRING:
+                require(value instanceof String, field, "string");
+                break;
 
-            case "number" -> require(value instanceof Number, field, "number");
+            case NUMBER:
+                require(value instanceof Number, field, "number");
+                break;
 
-            case "boolean" -> require(value instanceof Boolean, field, "boolean");
+            case BOOLEAN:
+                require(value instanceof Boolean, field, "boolean");
+                break;
 
-            case "array" -> require(value instanceof List<?>, field, "array");
+            case ARRAY:
+                require(value instanceof List<?>, field, "array");
+                break;
 
-            case "object", "json" -> require(value instanceof Map<?, ?>, field, "object");
+            case OBJECT:
+            case JSON:
+                require(value instanceof Map<?, ?>, field, "object");
+                break;
 
-            case "email" -> {
+            case EMAIL:
                 require(value instanceof String, field, "email");
-                if (!EMAIL_PATTERN.matcher(value.toString()).matches()) {
+                if (!EmailValidator.getInstance().isValid(value.toString())) {
                     throw new BadRequestException("Invalid email format for field '" + field + "'");
                 }
-            }
+                break;
 
-            case "uuid" -> {
+            case UUID:
                 require(value instanceof String, field, "uuid");
                 try {
                     UUID.fromString(value.toString());
                 } catch (Exception e) {
                     throw new BadRequestException("Invalid UUID format for field '" + field + "'");
                 }
-            }
+                break;
 
-            case "datetime" -> {
+            case DATETIME:
                 require(value instanceof String, field, "datetime");
                 try {
                     OffsetDateTime.parse(value.toString());
                 } catch (Exception e) {
                     throw new BadRequestException("Invalid datetime format (ISO-8601) for field '" + field + "'");
                 }
-            }
+                break;
 
-            case "enum" -> {
+            case ENUM:
                 if (enumValues == null || !enumValues.contains(value)) {
                     throw new BadRequestException(
                             "Invalid enum value for field '" + field + "'. Allowed: " + enumValues
                     );
                 }
-            }
-
-            default -> throw new BadRequestException("Unsupported schema data type: " + type);
+                break;
         }
     }
 
     private void require(boolean condition, String field, String type) {
         if (!condition) {
             throw new BadRequestException("Field '" + field + "' must be of type " + type);
+        }
+    }
+
+    // Helper (internal only)
+
+    private ALLOWED_TYPES parseType(String field, String typeStr) {
+        try {
+            return ALLOWED_TYPES.from(typeStr);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid type for field '" + field + "': " + typeStr);
         }
     }
 }
