@@ -44,7 +44,7 @@ public class MockValidatorServiceImpl implements MockValidatorService {
                     return type;
                 }
             }
-            throw new IllegalArgumentException("Invalid schema type: " + value);
+            throw new BadRequestException("Invalid schema type: " + value);
         }
     }
 
