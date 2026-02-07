@@ -44,6 +44,7 @@ CREATE TABLE api_keys (
     -- Key lifecycle
     is_active BOOLEAN DEFAULT TRUE NOT NULL,
     expires_at TIMESTAMPTZ,
+    last_used_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
 
