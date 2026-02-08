@@ -33,6 +33,10 @@ app:
       secure: false          # HTTP allowed (localhost)
       same-site: Lax         # Works well for same-site dev
 
+  api-key:
+    secret: ${API_KEY_SECRET:your-dev-secret-key-not-for-production-use}
+    max-per-organization: 10
+
 # Actuator configuration
 management:
   endpoints:
