@@ -5,11 +5,14 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.regex.Pattern;
 
 /**
  * Cryptographic service for API key generation and hashing
@@ -21,6 +24,8 @@ public class ApiKeyCryptoService {
 
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Pattern KEY_PATTERN =
+            Pattern.compile("^(mk_live_|mk_test_)[A-Za-z0-9_-]{43}$");
 
     // Key format: mk_live_<32 bytes base64url>
     private static final String KEY_PREFIX_LIVE = "mk_live_";
@@ -55,22 +60,29 @@ public class ApiKeyCryptoService {
      * @return hex-encoded HMAC-SHA256 hash
      */
     public String hashApiKey(String apiKey, String secret) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalArgumentException("API key must not be null or blank");
+        }
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalArgumentException("Secret must not be null or blank");
+        }
+
         try {
             Mac hmac = Mac.getInstance(HMAC_ALGORITHM);
             SecretKeySpec secretKey = new SecretKeySpec(
-                    secret.getBytes(),
+                    secret.getBytes(StandardCharsets.UTF_8),
                     HMAC_ALGORITHM
             );
             hmac.init(secretKey);
 
-            byte[] hashBytes = hmac.doFinal(apiKey.getBytes());
+            byte[] hashBytes = hmac.doFinal(apiKey.getBytes(StandardCharsets.UTF_8));
 
             // Return hex-encoded hash
             return HexFormat.of().formatHex(hashBytes);
 
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             log.error("Failed to hash API key", e);
-            throw new RuntimeException("Cryptographic error during key hashing", e);
+            throw new IllegalStateException("Cryptographic error during key hashing", e);
         }
     }
 
@@ -83,10 +95,21 @@ public class ApiKeyCryptoService {
      * @return true if key matches hash
      */
     public boolean verifyApiKey(String apiKey, String storedHash, String secret) {
+        if (storedHash == null || secret == null) {
+            return false;
+        }
+
+        if (!isValidKeyFormat(apiKey)) {
+            return false;
+        }
+
         String computedHash = hashApiKey(apiKey, secret);
 
         // Use constant-time comparison to prevent timing attacks
-        return constantTimeEquals(computedHash, storedHash);
+        return MessageDigest.isEqual(
+                computedHash.getBytes(StandardCharsets.UTF_8),
+                storedHash.getBytes(StandardCharsets.UTF_8)
+        );
     }
 
     /**
@@ -97,16 +120,15 @@ public class ApiKeyCryptoService {
      * @return prefix + first 4 chars of key
      */
     public String extractKeyPrefix(String apiKey) {
-        if (apiKey == null || apiKey.length() < 12) {
+        if (!isValidKeyFormat(apiKey)) {
             throw new IllegalArgumentException("Invalid API key format");
         }
 
-        // Extract prefix (mk_live_ or mk_test_)
-        String prefix = apiKey.startsWith(KEY_PREFIX_LIVE) ? KEY_PREFIX_LIVE : KEY_PREFIX_TEST;
+        int prefixLength = apiKey.startsWith(KEY_PREFIX_LIVE)
+                ? KEY_PREFIX_LIVE.length()
+                : KEY_PREFIX_TEST.length();
 
-        // Return prefix + first 4 chars after prefix
-        int prefixEnd = prefix.length();
-        return apiKey.substring(0, Math.min(prefixEnd + 4, apiKey.length()));
+        return apiKey.substring(0, prefixLength + 4);
     }
 
     /**
@@ -116,42 +138,8 @@ public class ApiKeyCryptoService {
      * @return true if format is valid
      */
     public boolean isValidKeyFormat(String apiKey) {
-        if (apiKey == null || apiKey.isBlank()) {
-            return false;
-        }
-
-        // Must start with valid prefix
-        if (!apiKey.startsWith(KEY_PREFIX_LIVE) && !apiKey.startsWith(KEY_PREFIX_TEST)) {
-            return false;
-        }
-
-        // Must have reasonable length (prefix + base64url encoded 32 bytes ≈ 51 chars)
-        if (apiKey.length() < 40 || apiKey.length() > 60) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Constant-time string comparison to prevent timing attacks
-     * Essential for secure hash verification
-     */
-    private boolean constantTimeEquals(String a, String b) {
-        if (a == null || b == null) {
-            return false;
-        }
-
-        if (a.length() != b.length()) {
-            return false;
-        }
-
-        int result = 0;
-        for (int i = 0; i < a.length(); i++) {
-            result |= a.charAt(i) ^ b.charAt(i);
-        }
-
-        return result == 0;
+        if (apiKey == null) return false;
+        return KEY_PATTERN.matcher(apiKey).matches();
     }
 
     /**
@@ -164,6 +152,14 @@ public class ApiKeyCryptoService {
      * @return organization-specific secret
      */
     public String generateOrgSecret(String organizationId, String globalSecret) {
-        return hashApiKey(organizationId, globalSecret);
+        if (organizationId == null || organizationId.isBlank()) {
+            throw new IllegalArgumentException("Organization ID must not be null or blank");
+        }
+        if (globalSecret == null || globalSecret.isBlank()) {
+            throw new IllegalArgumentException("Global secret must not be null or blank");
+        }
+
+        String input = organizationId + ":api-key";
+        return hashApiKey(input, globalSecret);
     }
 }
