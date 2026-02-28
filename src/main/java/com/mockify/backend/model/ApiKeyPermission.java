@@ -3,6 +3,9 @@ package com.mockify.backend.model;
 import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -30,6 +33,7 @@ public class ApiKeyPermission {
      * Hierarchical: read < write < delete < admin
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false)
     private ApiPermission permission;
 
@@ -37,6 +41,7 @@ public class ApiKeyPermission {
      * Resource type: schema, record, project, organization
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "resource_type", nullable = false)
     private ApiResourceType resourceType;
 

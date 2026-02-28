@@ -1,0 +1,49 @@
+# Local Development Configuration
+
+spring:
+  # Local Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mockify
+    username: mockify_user
+    password: mockify_password
+
+  jpa:
+    show-sql: true
+
+  # Docker Compose (Local Only)
+  docker:
+    compose:
+      enabled: true
+
+# JWT Configuration (Local)
+jwt:
+  secret: ${JWT_SECRET:af84c6a92b8d5f4e1c7d92a6e6a1c56a4e9f45bba782cd51e2e1f67a9c34b12f}
+  access:
+    expiration: ${JWT_ACCESS_EXPIRATION:3600000}
+  refresh:
+    expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+# Application Cookie Settings (Local)
+app:
+  cookie:
+    refresh-token:
+      name: refresh_token
+      path: /api/auth        # Send cookie only for auth url (Refresh & Logout)
+      max-age: 604800        # 7 days
+      secure: false          # HTTP allowed (localhost)
+      same-site: Lax         # Works well for same-site dev
+
+  api-key:
+    secret: ${API_KEY_SECRET:your-dev-secret-key-not-for-production-use}
+    max-per-organization: 100
+
+# Actuator configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"     # expose all actuator endpoints locally
+
+  endpoint:
+    health:
+      show-details: always

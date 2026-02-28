@@ -4,18 +4,18 @@
 -- 0. ENUM DEFINITIONS
 -- Permission levels for API keys (hierarchical: read < write < delete < admin)
 CREATE TYPE api_permission AS ENUM (
-    'read',     -- View resources
-    'write',    -- Create/update resources
-    'delete',   -- Remove resources
-    'admin'     -- Full control (implies all above)
+    'READ',     -- View resources
+    'WRITE',    -- Create/update resources
+    'DELETE',   -- Remove resources
+    'ADMIN'     -- Full control (implies all above)
 );
 
 -- Resource types that permissions apply to
 CREATE TYPE api_resource_type AS ENUM (
-    'schema',
-    'record',
-    'project',
-    'organization'
+    'SCHEMA',
+    'RECORD',
+    'PROJECT',
+    'ORGANIZATION'
 );
 
 -- Ensure composite uniqueness on projects

@@ -65,6 +65,7 @@ public class ApiKey {
 
     // Key lifecycle
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private boolean isActive = true;
 
     @Column(name = "expires_at")
@@ -123,5 +124,10 @@ public class ApiKey {
      */
     public void markAsUsed() {
         this.lastUsedAt = LocalDateTime.now();
+    }
+
+    public void addPermission(ApiKeyPermission permission) {
+        permissions.add(permission);
+        permission.setApiKey(this);
     }
 }
