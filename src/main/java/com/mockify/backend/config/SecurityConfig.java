@@ -2,6 +2,7 @@ package com.mockify.backend.config;
 
 import com.mockify.backend.security.CustomAuthenticationEntryPoint;
 import com.mockify.backend.security.JwtAuthenticationFilter;
+import com.mockify.backend.security.RateLimitFilter;
 import com.mockify.backend.security.oauth2.CustomOAuth2UserService;
 import com.mockify.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Bean
@@ -103,7 +105,9 @@ public class SecurityConfig {
                 )
 
                 // keep JWT filter (before UsernamePasswordAuthenticationFilter)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // keep rate limit filter (after JWT Filter)
+                .addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

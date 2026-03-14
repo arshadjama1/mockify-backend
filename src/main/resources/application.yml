@@ -102,3 +102,97 @@ management:
   endpoint:
     health:
       show-details: never
+
+
+# Rate limiting configuration
+mockify:
+  rate-limit:
+
+    # Global rate limit applied to all requests by default (Prevent bot spamming and DDOS)
+    # If a request does not match any group below, this limit applies
+    global:
+      limit: 200
+      window: 1m
+      type: ip
+
+    groups:
+
+      # Very strict to prevent brute-force attacks
+      auth:
+        paths:
+          - /api/auth/**
+        limit: 5
+        window: 1m
+        type: ip
+
+      public-mock:
+        paths:
+          - /api/mock/**
+        limit: 200
+        window: 1m
+        type: ip
+
+      lookup:
+        paths:
+          - /api/endpoints/lookup/**
+        limit: 120
+        window: 1m
+        type: ip
+
+      dashboard:
+        paths:
+          - /api/dashboard/**
+        limit: 60
+        window: 1m
+        type: user
+
+      organization:
+        paths:
+          - /api/organizations/**
+        limit: 30
+        window: 1m
+        type: user
+
+      project:
+        paths:
+          - /api/*/*
+          - /api/*/projects/**
+        limit: 40
+        window: 1m
+        type: user
+
+      schema:
+        paths:
+          - /api/*/*/schemas
+          - /api/*/*/schemas/**
+        limit: 40
+        window: 1m
+        type: user
+
+      records:
+        paths:
+          - /api/*/*/*/records/**
+        limit: 60
+        window: 1m
+        type: user
+
+      templates:
+        paths:
+          - /api/schema-templates/**
+        limit: 20
+        window: 1m
+        type: user
+
+      admin:
+        paths:
+          - /api/admin/**
+        limit: 50
+        window: 1m
+        type: user
+
+      actuator:
+        paths:
+          - /actuator/**
+        limit: 30
+        window: 1m
+        type: ip
