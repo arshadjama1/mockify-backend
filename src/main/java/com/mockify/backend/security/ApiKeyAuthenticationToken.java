@@ -15,16 +15,19 @@ import java.util.UUID;
 public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
 
     private final UUID apiKeyId;
+    private final UUID ownerId;         // createdBy UUID — used by controllers as the effective user
     private final UUID organizationId;
     private final UUID projectId; // null for org-level keys
 
     public ApiKeyAuthenticationToken(
             UUID apiKeyId,
+            UUID ownerId,
             UUID organizationId,
             UUID projectId,
             Collection<? extends GrantedAuthority> authorities) {
         super(authorities);
         this.apiKeyId = apiKeyId;
+        this.ownerId = ownerId;
         this.organizationId = organizationId;
         this.projectId = projectId;
         setAuthenticated(true);

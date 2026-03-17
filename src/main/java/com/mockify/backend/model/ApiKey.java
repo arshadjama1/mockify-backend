@@ -87,6 +87,7 @@ public class ApiKey {
     // Permissions
     @JsonIgnore
     @OneToMany(mappedBy = "apiKey", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<ApiKeyPermission> permissions = new HashSet<>();
 
     @PrePersist

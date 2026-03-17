@@ -1,5 +1,6 @@
 package com.mockify.backend.security;
 
+import com.mockify.backend.config.ApiKeyConfig;
 import com.mockify.backend.model.ApiKey;
 import com.mockify.backend.repository.ApiKeyRepository;
 import jakarta.servlet.FilterChain;
@@ -9,8 +10,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -21,8 +20,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Filter to authenticate requests using API keys
@@ -35,9 +34,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private final ApiKeyRepository apiKeyRepository;
     private final ApiKeyCryptoService cryptoService;
-
-    @Value("${app.api-key.secret}")
-    private String globalSecret;
+    private final ApiKeyConfig apiKeyConfig;
 
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final String AUTHORIZATION_HEADER = "Authorization";
@@ -71,32 +68,34 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // Authenticate the API key
-            Optional<ApiKey> validatedKey = authenticateApiKey(apiKey, request);
+            Optional<ApiKey> validatedKey = authenticateByKeyHash(apiKey);
 
             if (validatedKey.isPresent()) {
                 ApiKey key = validatedKey.get();
 
-                // Create authentication token with API key context
+                if (!key.isValid()) {
+                    log.warn("API key failed validity check: keyId={}", key.getId());
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 ApiKeyAuthenticationToken authentication = new ApiKeyAuthenticationToken(
                         key.getId(),
+                        key.getCreatedBy().getId(),                                          // ownerId
                         key.getOrganization().getId(),
                         key.getProject() != null ? key.getProject().getId() : null,
                         Collections.singletonList(new SimpleGrantedAuthority("ROLE_API_KEY"))
                 );
 
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                // Store in security context
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
                 // Update last used timestamp asynchronously (don't block request)
                 updateLastUsedAsync(key);
 
-                log.debug("API key authentication successful: keyId={}, org={}",
-                        key.getId(), key.getOrganization().getId());
+                log.debug("API key authenticated: keyId={}, org={}, owner={}",
+                        key.getId(), key.getOrganization().getId(), key.getCreatedBy());
+
             } else {
                 log.warn("API key authentication failed from IP: {}", request.getRemoteAddr());
             }
@@ -128,108 +127,48 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    /**
-     * Authenticate API key against database
-     *
-     * @param apiKey raw API key from request
-     * @param request HTTP request for additional context
-     * @return validated ApiKey entity if authentication succeeds
-     */
-    private Optional<ApiKey> authenticateApiKey(String apiKey, HttpServletRequest request) {
+    private Optional<ApiKey> authenticateByKeyHash(String apiKey) {
         try {
-            // Extract organization ID from request path (e.g., /api/{org}/...)
-            // This is a simplified approach - adjust based on your routing
-            UUID organizationId = extractOrganizationIdFromPath(request.getRequestURI());
+            String keyPrefix = cryptoService.extractKeyPrefix(apiKey);
 
-            if (organizationId == null) {
-                log.debug("Could not determine organization from request path");
-                return Optional.empty();
-            }
-
-            // Generate organization-specific secret
-            String orgSecret = cryptoService.generateOrgSecret(
-                    organizationId.toString(),
-                    globalSecret
+            List<ApiKey> candidates = apiKeyRepository.findByKeyPrefixAndActive(
+                    keyPrefix, LocalDateTime.now()
             );
 
-            // Hash the provided API key
-            String keyHash = cryptoService.hashApiKey(apiKey, orgSecret);
-
-            // Lookup key in database
-            Optional<ApiKey> keyOpt = apiKeyRepository.findValidKeyByHash(
-                    organizationId,
-                    keyHash,
-                    LocalDateTime.now()
-            );
-
-            if (keyOpt.isEmpty()) {
-                log.debug("No valid API key found for hash");
+            if (candidates.isEmpty()) {
+                log.debug("No active API keys found with prefix: {}", keyPrefix);
                 return Optional.empty();
             }
 
-            ApiKey key = keyOpt.get();
-
-            // Additional validation
-            if (!key.isValid()) {
-                log.warn("API key failed validation: keyId={}", key.getId());
-                return Optional.empty();
+            for (ApiKey candidate : candidates) {
+                String orgSecret = cryptoService.generateOrgSecret(
+                        candidate.getOrganization().getId().toString(),
+                        apiKeyConfig.getSecret()
+                );
+                if (candidate.getKeyHash().equals(cryptoService.hashApiKey(apiKey, orgSecret))) {
+                    return Optional.of(candidate);
+                }
             }
 
-            return Optional.of(key);
+            log.debug("No HMAC match found among {} candidate key(s)", candidates.size());
+            return Optional.empty();
 
         } catch (Exception e) {
-            log.error("Error during API key authentication", e);
+            log.error("Error during key hash authentication", e);
             return Optional.empty();
         }
     }
 
     /**
-     * Extract organization ID from request path
-     * Assumes path format: /api/{org}/...
-     */
-    private UUID extractOrganizationIdFromPath(String path) {
-        try {
-            // Split path and find org segment
-            String[] segments = path.split("/");
-
-            // Path format: /api/{org}/... or /api/mock/{org}/...
-            if (segments.length >= 3 && "api".equals(segments[1])) {
-                String orgSegment = segments[2];
-
-                // If it's "mock", org is in next segment
-                if ("mock".equals(orgSegment) && segments.length >= 4) {
-                    orgSegment = segments[3];
-                }
-
-                // Try to parse as UUID (if using UUIDs in paths)
-                // Otherwise, you'd need to lookup org by slug
-                try {
-                    return UUID.fromString(orgSegment);
-                } catch (IllegalArgumentException e) {
-                    // If not UUID, would need to lookup by slug
-                    log.debug("Organization segment is not UUID, slug lookup needed");
-                    return null;
-                }
-            }
-
-            return null;
-        } catch (Exception e) {
-            log.debug("Could not extract organization ID from path: {}", path);
-            return null;
-        }
-    }
-
-    /**
-     * Update last used timestamp without blocking the request
+     *  TODO: In production, use @Async or a message queue
+     *  For now, simple approach
      */
     private void updateLastUsedAsync(ApiKey key) {
-        // In production, use @Async or a message queue
-        // For now, simple approach
         try {
             key.markAsUsed();
             apiKeyRepository.save(key);
         } catch (Exception e) {
-            log.warn("Failed to update API key last used timestamp", e);
+            log.warn("Failed to update API key last-used timestamp: keyId={}", key.getId(), e);
         }
     }
 
@@ -239,18 +178,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-
-        // Skip for auth endpoints (these use JWT)
-        if (path.startsWith("/api/auth/")) {
-            return true;
-        }
-
-        // Skip for Swagger/docs
-        if (path.startsWith("/v3/api-docs") ||
-                path.startsWith("/swagger-ui")) {
-            return true;
-        }
-
-        return false;
+        return path.startsWith("/api/auth/")
+                || path.startsWith("/v3/api-docs")
+                || path.startsWith("/swagger-ui");
     }
 }

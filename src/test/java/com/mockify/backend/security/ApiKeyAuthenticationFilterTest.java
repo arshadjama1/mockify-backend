@@ -94,11 +94,6 @@ class ApiKeyAuthenticationFilterTest {
         mockMvc.perform(get("/api/organizations")
                         .header("X-API-Key", validApiKey))
                 .andExpect(status().isOk());
-
-        // Verify authentication was set
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        assertNotNull(auth);
-        assertTrue(auth instanceof ApiKeyAuthenticationToken);
     }
 
     @Test

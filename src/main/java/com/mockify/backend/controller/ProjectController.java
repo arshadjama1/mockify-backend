@@ -4,6 +4,7 @@ import com.mockify.backend.dto.request.project.CreateProjectRequest;
 import com.mockify.backend.dto.request.project.UpdateProjectRequest;
 import com.mockify.backend.dto.response.project.ProjectDetailResponse;
 import com.mockify.backend.dto.response.project.ProjectResponse;
+import com.mockify.backend.security.ApiKeyAuthenticationToken;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.ProjectService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,7 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,18 +31,25 @@ public class ProjectController {
     private final ProjectService projectService;
     private final EndpointService endpointService;
 
+    private UUID resolveUserId(Authentication auth) {
+        if (auth instanceof ApiKeyAuthenticationToken token) {
+            return token.getOwnerId();
+        } else if (auth.getPrincipal() instanceof UserDetails user) {
+            return UUID.fromString(user.getUsername());
+        }
+        throw new AccessDeniedException("Unknown authentication type");
+    }
+
     //  Create a new project under an organization
     @PostMapping("/{org}/projects")
     public ResponseEntity<ProjectResponse> createProject(
             @PathVariable String org,
             @Valid @RequestBody CreateProjectRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
-        log.info("User {} creating new project '{}' under organization {}", userId, request.getName(), org);
-
-        // Resolve the organization and extract orgId to create the project under the correct org
+        UUID userId = resolveUserId(auth);
         UUID orgId = endpointService.resolveOrganization(org);
+        log.info("User {} creating new project '{}' under organization {}", userId, request.getName(), org);
 
         ProjectResponse created = projectService.createProject(userId, orgId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -51,11 +60,10 @@ public class ProjectController {
     public ResponseEntity<ProjectDetailResponse> getProject(
             @PathVariable String org,
             @PathVariable String project,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = resolveUserId(auth);
         UUID projectId = endpointService.resolveProject(org, project);
-
         log.debug("User {} fetching project details for ID {}", userId, projectId);
 
         ProjectDetailResponse response = projectService.getProjectById(userId, projectId);
@@ -68,9 +76,9 @@ public class ProjectController {
             @PathVariable String org,
             @PathVariable String project,
             @Valid @RequestBody UpdateProjectRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = resolveUserId(auth);
         UUID projectId = endpointService.resolveProject(org, project);
         log.info("User {} updating project {}", userId, projectId);
 
@@ -83,9 +91,9 @@ public class ProjectController {
     public ResponseEntity<Void> deleteProject(
             @PathVariable String org,
             @PathVariable String project,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = resolveUserId(auth);
         UUID projectId = endpointService.resolveProject(org, project);
         log.warn("User {} deleting project ID {}", userId, projectId);
 
@@ -97,16 +105,13 @@ public class ProjectController {
     @GetMapping("/{org}/projects")
     public ResponseEntity<List<ProjectResponse>> getProjectsByOrganization(
             @PathVariable String org,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = resolveUserId(auth);
         UUID organizationId = endpointService.resolveOrganization(org);
-
         log.debug("User {} fetching projects under org {}", userId, organizationId);
 
-        List<ProjectResponse> projects =
-                projectService.getProjectsByOrganizationId(userId, organizationId);
-
+        List<ProjectResponse> projects = projectService.getProjectsByOrganizationId(userId, organizationId);
         return ResponseEntity.ok(projects);
     }
 }

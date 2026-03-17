@@ -34,6 +34,23 @@ public interface ApiKeyRepository extends JpaRepository<ApiKey, UUID> {
     );
 
     /**
+     * Alternative authentication: Find by key prefix and validate
+     * Used when organization is not known upfront
+     * Less efficient but necessary for API key authentication
+     */
+    @Query("""
+        SELECT ak FROM ApiKey ak
+        LEFT JOIN FETCH ak.permissions
+        WHERE ak.keyPrefix = :keyPrefix
+          AND ak.isActive = true
+          AND (ak.expiresAt IS NULL OR ak.expiresAt > :now)
+    """)
+    List<ApiKey> findByKeyPrefixAndActive(
+            @Param("keyPrefix") String keyPrefix,
+            @Param("now") LocalDateTime now
+    );
+
+    /**
      * Find all API keys for an organization
      */
     @Query("""
