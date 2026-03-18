@@ -3,7 +3,7 @@ package com.mockify.backend.controller;
 import com.mockify.backend.dto.request.record.CreateMockRecordRequest;
 import com.mockify.backend.dto.request.record.UpdateMockRecordRequest;
 import com.mockify.backend.dto.response.record.MockRecordResponse;
-import com.mockify.backend.security.ApiKeyAuthenticationToken;
+import com.mockify.backend.security.SecurityUtils;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.MockRecordService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,14 +12,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Mock Record management controller.
+ *
+ * SECURITY: All operations are open to both JWT and API key authentication.
+ * Reading and writing mock records is the core programmatic use case for API
+ * keys — CI pipelines, test harnesses and automation scripts all need to seed
+ * and update record data without a human session.
+ *
+ * Access control (ownership, org/project/schema membership) is enforced in
+ * the service layer via {@code AccessControlService}, regardless of auth type.
+ */
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -30,15 +39,6 @@ public class MockRecordController {
     private final MockRecordService mockRecordService;
     private final EndpointService endpointService;
 
-    private UUID resolveUserId(Authentication auth) {
-        if (auth instanceof ApiKeyAuthenticationToken token) {
-            return token.getOwnerId();
-        } else if (auth.getPrincipal() instanceof UserDetails user) {
-            return UUID.fromString(user.getUsername());
-        }
-        throw new AccessDeniedException("Unknown authentication type");
-    }
-
     // Create a new mock record
     @PostMapping("/{org}/{project}/{schema}/records")
     public ResponseEntity<MockRecordResponse> createRecord(
@@ -48,7 +48,7 @@ public class MockRecordController {
             @Valid @RequestBody CreateMockRecordRequest request,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.info("User {} creating new mock record under schema {}", userId, schemaId);
 
@@ -65,7 +65,7 @@ public class MockRecordController {
             @Valid @RequestBody List<CreateMockRecordRequest> requests,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.info("User {} bulk creating {} records under schema {}", userId, requests.size(), schemaId);
 
@@ -82,7 +82,7 @@ public class MockRecordController {
             @PathVariable UUID recordId,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         log.debug("User {} fetching record with ID {}", userId, recordId);
 
         MockRecordResponse record = mockRecordService.getRecordById(userId, recordId);
@@ -97,7 +97,7 @@ public class MockRecordController {
             @PathVariable String schema,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.debug("User {} fetching all records under schema {}", userId, schemaId);
 
@@ -115,7 +115,7 @@ public class MockRecordController {
             @Valid @RequestBody UpdateMockRecordRequest request,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         log.info("User {} updating record ID {}", userId, recordId);
 
         MockRecordResponse updated = mockRecordService.updateRecord(userId, recordId, request);
@@ -131,7 +131,7 @@ public class MockRecordController {
             @PathVariable UUID recordId,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         log.warn("User {} deleting record ID {}", userId, recordId);
 
         mockRecordService.deleteRecord(userId, recordId);

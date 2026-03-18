@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Filter to authenticate requests using API keys
@@ -39,6 +40,16 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String API_KEY_PREFIX = "ApiKey ";
+
+    private static final Set<String> PUBLIC_ENDPOINTS = Set.of(
+            "/api/auth/register",
+            "/api/auth/register/verify",
+            "/api/auth/login",
+            "/api/auth/refresh",
+            "/api/auth/logout",
+            "/api/auth/forgot-password",
+            "/api/auth/reset-password"
+    );
 
     @Override
     protected void doFilterInternal(
@@ -173,13 +184,12 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Skip API key authentication for public endpoints
+     * Skip API key authentication for:
+     *  - Public auth endpoints
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return path.startsWith("/api/auth/")
-                || path.startsWith("/v3/api-docs")
-                || path.startsWith("/swagger-ui");
+        return PUBLIC_ENDPOINTS.stream().anyMatch(path::startsWith);
     }
 }

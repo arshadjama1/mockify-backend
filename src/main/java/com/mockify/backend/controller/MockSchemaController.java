@@ -4,7 +4,7 @@ import com.mockify.backend.dto.request.schema.CreateMockSchemaRequest;
 import com.mockify.backend.dto.request.schema.UpdateMockSchemaRequest;
 import com.mockify.backend.dto.response.schema.MockSchemaDetailResponse;
 import com.mockify.backend.dto.response.schema.MockSchemaResponse;
-import com.mockify.backend.security.ApiKeyAuthenticationToken;
+import com.mockify.backend.security.SecurityUtils;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.MockSchemaService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,14 +12,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Mock Schema management controller.
+ *
+ * SECURITY: All operations are open to both JWT and API key authentication.
+ * Schema management — creating, updating, reading and deleting schemas — is
+ * the primary use case for programmatic API keys
+ *
+ * Access control (ownership checks, org/project membership) is enforced in
+ * the service layer via {@code AccessControlService}, regardless of how the
+ * caller authenticated.
+ */
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -30,15 +39,6 @@ public class MockSchemaController {
     private final MockSchemaService mockSchemaService;
     private final EndpointService endpointService;
 
-    private UUID resolveUserId(Authentication auth) {
-        if (auth instanceof ApiKeyAuthenticationToken token) {
-            return token.getOwnerId();
-        } else if (auth.getPrincipal() instanceof UserDetails user) {
-            return UUID.fromString(user.getUsername());
-        }
-        throw new AccessDeniedException("Unknown authentication type");
-    }
-
     @PostMapping("/{org}/{project}/schemas")
     public ResponseEntity<MockSchemaResponse> createSchema(
             @PathVariable String org,
@@ -46,7 +46,7 @@ public class MockSchemaController {
             @RequestBody CreateMockSchemaRequest request,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID projectId = endpointService.resolveProject(org, project);
         log.info("User {} creating schema '{}' under project {}", userId, request.getName(), project);
 
@@ -64,7 +64,7 @@ public class MockSchemaController {
             @PathVariable String schema,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.debug("User {} fetching schema {}", userId, schemaId);
 
@@ -83,7 +83,7 @@ public class MockSchemaController {
             @RequestBody UpdateMockSchemaRequest request,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.info("User {} updating schema {}", userId, schemaId);
 
@@ -101,7 +101,7 @@ public class MockSchemaController {
             @PathVariable String schema,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.warn("User {} deleting schema {}", userId, schemaId);
 
@@ -118,7 +118,7 @@ public class MockSchemaController {
             @PathVariable String project,
             Authentication auth) {
 
-        UUID userId = resolveUserId(auth);
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID projectId = endpointService.resolveProject(org, project);
         log.debug("User {} fetching schemas under project {}", userId, projectId);
 
