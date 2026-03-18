@@ -1,11 +1,11 @@
 package com.mockify.backend.service.impl;
 
+import com.mockify.backend.common.validation.PageableValidator;
 import com.mockify.backend.dto.request.record.CreateMockRecordRequest;
 import com.mockify.backend.dto.request.record.UpdateMockRecordRequest;
 import com.mockify.backend.dto.response.record.MockRecordResponse;
 import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.exception.ResourceNotFoundException;
-import com.mockify.backend.exception.ForbiddenException;
 import com.mockify.backend.mapper.MockRecordMapper;
 import com.mockify.backend.model.MockRecord;
 import com.mockify.backend.model.MockSchema;
@@ -16,6 +16,8 @@ import com.mockify.backend.service.MockValidatorService;
 import com.mockify.backend.service.AccessControlService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -102,16 +104,27 @@ public class MockRecordServiceImpl implements MockRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MockRecordResponse> getRecordsBySchemaId(UUID userId, UUID schemaId) {
+    public Page<MockRecordResponse> getRecordsBySchemaId(UUID userId, UUID schemaId, Pageable pageable) {
+
         log.debug("Fetching records for userId={}, schemaId={}", userId, schemaId);
+
+        // Validate Page size, protect from abuse
+        PageableValidator.validate(pageable, 50);
 
         MockSchema schema = mockSchemaRepository.findById(schemaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Schema not found"));
 
         accessControlService.checkOrganizationAccess(userId, schema.getProject().getOrganization(), "Record");
 
-        List<MockRecord> records = mockRecordRepository.findByMockSchema_Id(schemaId);
-        return mockRecordMapper.toResponseList(records);
+        Page<MockRecord> recordsPage = mockRecordRepository.findByMockSchema_Id(schemaId, pageable);
+
+        log.info("User {} fetching records page={}, size={} under schema {}",
+                userId,
+                recordsPage.getNumber(),
+                recordsPage.getSize(),
+                schemaId);
+
+        return recordsPage.map(mockRecordMapper::toResponse);
     }
 
     @Override

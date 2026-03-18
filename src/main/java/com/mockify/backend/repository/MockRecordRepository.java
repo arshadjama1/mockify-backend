@@ -1,6 +1,8 @@
 package com.mockify.backend.repository;
 
 import com.mockify.backend.model.MockRecord;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,7 +16,7 @@ import java.util.UUID;
 public interface MockRecordRepository extends JpaRepository<MockRecord, UUID> {
 
     // Get all records under a schema
-    List<MockRecord> findByMockSchema_Id(UUID schemaId);
+    Page<MockRecord> findByMockSchema_Id(UUID schemaId, Pageable pageable);
 
     // Find expired records before given time
     List<MockRecord> findByExpiresAtBefore(LocalDateTime now);
@@ -25,7 +27,7 @@ public interface MockRecordRepository extends JpaRepository<MockRecord, UUID> {
     // Count all records
     long count();
 
-    // Delete expired mock datas
+    // Delete expired mock data
     @Modifying
     @Query("""
         DELETE FROM MockRecord r

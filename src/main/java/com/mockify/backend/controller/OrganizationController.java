@@ -4,12 +4,18 @@ import com.mockify.backend.dto.request.organization.CreateOrganizationRequest;
 import com.mockify.backend.dto.request.organization.UpdateOrganizationRequest;
 import com.mockify.backend.dto.response.organization.OrganizationDetailResponse;
 import com.mockify.backend.dto.response.organization.OrganizationResponse;
+import com.mockify.backend.dto.response.page.PageResponse;
+import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.OrganizationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -61,12 +67,15 @@ public class OrganizationController {
 
     // Get all organizations for current user
     @GetMapping("/organizations")
-    public ResponseEntity<List<OrganizationResponse>> getMyOrganizations(
+    public ResponseEntity<PageResponse<OrganizationResponse>> getMyOrganizations(
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        List<OrganizationResponse> responses = organizationService.getMyOrganizations(userId);
-        return ResponseEntity.ok(responses);
+
+        Page<OrganizationResponse> page = organizationService.getMyOrganizations(userId, pageable);
+
+        return ResponseEntity.ok(PageResponse.from(page));
     }
 
     // Update organization

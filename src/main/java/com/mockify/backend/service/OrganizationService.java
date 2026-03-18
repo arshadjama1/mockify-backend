@@ -4,6 +4,8 @@ import com.mockify.backend.dto.request.organization.CreateOrganizationRequest;
 import com.mockify.backend.dto.request.organization.UpdateOrganizationRequest;
 import com.mockify.backend.dto.response.organization.OrganizationDetailResponse;
 import com.mockify.backend.dto.response.organization.OrganizationResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,7 +24,7 @@ public interface OrganizationService {
     OrganizationDetailResponse getOrganizationDetail(UUID orgId, UUID userId);
 
     // Get all organizations owned by current user
-    List<OrganizationResponse> getMyOrganizations(UUID userId);
+    Page<OrganizationResponse> getMyOrganizations(UUID userId, Pageable pageable);
 
     // Update organization name or details
     OrganizationResponse updateOrganization(UUID userId, UUID orgId, UpdateOrganizationRequest request);
