@@ -76,7 +76,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
 
         // Check uniqueness within project
         if (mockSchemaRepository.existsBySlugAndProjectId(slug, projectId)) {
-           slug = slugService.generateUniqueSlug(slug);
+            slug = slugService.generateUniqueSlug(slug);
         }
 
         // Validate Mock Schema
