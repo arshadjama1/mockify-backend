@@ -2,6 +2,8 @@ package com.mockify.backend.security;
 
 import com.mockify.backend.config.ApiKeyConfig;
 import com.mockify.backend.model.ApiKey;
+import com.mockify.backend.model.ApiKeyPermission;
+import com.mockify.backend.repository.ApiKeyPermissionRepository;
 import com.mockify.backend.repository.ApiKeyRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -25,8 +27,14 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Filter to authenticate requests using API keys
- * Runs after JWT filter but before authorization
+ * Filter to authenticate requests using API keys.
+ *
+ * <p>Runs after the JWT filter. If a JWT is already present the filter skips
+ * immediately, so JWT always takes precedence.</p>
+ *
+ * <p>On a successful HMAC match the filter eagerly loads all
+ * {@link ApiKeyPermission} rows for the key and stores them inside the
+ * {@link ApiKeyAuthenticationToken}.</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -34,6 +42,7 @@ import java.util.Set;
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private final ApiKeyRepository apiKeyRepository;
+    private final ApiKeyPermissionRepository apiKeyPermissionRepository;
     private final ApiKeyCryptoService cryptoService;
     private final ApiKeyConfig apiKeyConfig;
 
@@ -90,11 +99,17 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
+                // Load permissions eagerly so MockifyPermissionEvaluator can use them
+                // without extra DB calls during @PreAuthorize evaluation.
+                List<ApiKeyPermission> permissions =
+                        apiKeyPermissionRepository.findByApiKeyId(key.getId());
+
                 ApiKeyAuthenticationToken authentication = new ApiKeyAuthenticationToken(
                         key.getId(),
-                        key.getCreatedBy().getId(),                                          // ownerId
+                        key.getCreatedBy().getId(),
                         key.getOrganization().getId(),
                         key.getProject() != null ? key.getProject().getId() : null,
+                        permissions,
                         Collections.singletonList(new SimpleGrantedAuthority("ROLE_API_KEY"))
                 );
 
@@ -104,8 +119,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 // Update last used timestamp asynchronously (don't block request)
                 updateLastUsedAsync(key);
 
-                log.debug("API key authenticated: keyId={}, org={}, owner={}",
-                        key.getId(), key.getOrganization().getId(), key.getCreatedBy());
+                log.debug("API key authenticated: keyId={}, org={}, permissions={}",
+                        key.getId(), key.getOrganization().getId(), permissions.size());
 
             } else {
                 log.warn("API key authentication failed from IP: {}", request.getRemoteAddr());
@@ -141,10 +156,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private Optional<ApiKey> authenticateByKeyHash(String apiKey) {
         try {
             String keyPrefix = cryptoService.extractKeyPrefix(apiKey);
-
-            List<ApiKey> candidates = apiKeyRepository.findByKeyPrefixAndActive(
-                    keyPrefix, LocalDateTime.now()
-            );
+            List<ApiKey> candidates = apiKeyRepository.findByKeyPrefixAndActive(keyPrefix, LocalDateTime.now());
 
             if (candidates.isEmpty()) {
                 log.debug("No active API keys found with prefix: {}", keyPrefix);
@@ -171,8 +183,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     *  TODO: In production, use @Async or a message queue
-     *  For now, simple approach
+     * TODO: In production, use @Async or a message queue.
+     * For now, simple synchronous update — acceptable for low traffic.
      */
     private void updateLastUsedAsync(ApiKey key) {
         try {
