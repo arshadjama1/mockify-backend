@@ -3,17 +3,13 @@ package com.mockify.backend.service.impl;
 import com.mockify.backend.dto.request.apikey.CreateApiKeyRequest;
 import com.mockify.backend.dto.request.apikey.UpdateApiKeyRequest;
 import com.mockify.backend.dto.response.apikey.ApiKeyResponse;
-import com.mockify.backend.dto.response.apikey.ApiKeyStats;
 import com.mockify.backend.dto.response.apikey.CreateApiKeyResult;
 import com.mockify.backend.exception.AccessDeniedException;
 import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.exception.ResourceNotFoundException;
 import com.mockify.backend.model.*;
-import com.mockify.backend.model.ApiKeyPermission.ApiPermission;
-import com.mockify.backend.model.ApiKeyPermission.ApiResourceType;
 import com.mockify.backend.repository.*;
 import com.mockify.backend.security.ApiKeyCryptoService;
-import com.mockify.backend.service.AccessControlService;
 import com.mockify.backend.service.ApiKeyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +23,15 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * JWT-only service — API key CRUD must never be performed via an API key itself.
+ * Enforcement is at the controller layer via {@code SecurityUtils.requireJwtAuthentication()}.
+ *
+ * <p>Ownership is verified by {@link #requireOwnership} rather than a shared
+ * {@code AccessControlService}. Since this service is never called by API key
+ * callers it does not need {@code @PreAuthorize} — the controller guard is
+ * sufficient and keeps the authorization logic simple.</p>
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -38,7 +43,6 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ApiKeyCryptoService cryptoService;
-    private final AccessControlService accessControlService;
 
     @Value("${app.api-key.secret}")
     private String globalSecret;
@@ -52,14 +56,13 @@ public class ApiKeyServiceImpl implements ApiKeyService {
             UUID userId,
             UUID organizationId,
             CreateApiKeyRequest request) {
-
         log.info("User {} creating API key for organization {}", userId, organizationId);
 
         // Validate user has access to organization
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
 
-        accessControlService.checkOrganizationAccess(userId, organization, "Organization");
+        requireOwnership(userId, organization, "Organization");
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -158,11 +161,9 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     public List<ApiKeyResponse> listOrganizationKeys(UUID userId, UUID organizationId) {
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+        requireOwnership(userId, organization, "Organization");
 
-        accessControlService.checkOrganizationAccess(userId, organization, "Organization");
-
-        List<ApiKey> keys = apiKeyRepository.findByOrganizationId(organizationId);
-        return keys.stream()
+        return apiKeyRepository.findByOrganizationId(organizationId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -172,15 +173,9 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     public List<ApiKeyResponse> listProjectKeys(UUID userId, UUID projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+        requireOwnership(userId, project.getOrganization(), "Project");
 
-        accessControlService.checkOrganizationAccess(
-                userId,
-                project.getOrganization(),
-                "Project"
-        );
-
-        List<ApiKey> keys = apiKeyRepository.findByProjectId(projectId);
-        return keys.stream()
+        return apiKeyRepository.findByProjectId(projectId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -190,12 +185,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     public ApiKeyResponse getApiKeyById(UUID userId, UUID keyId) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
-
-        accessControlService.checkOrganizationAccess(
-                userId,
-                apiKey.getOrganization(),
-                "API Key"
-        );
+        requireOwnership(userId, apiKey.getOrganization(), "API Key");
 
         return toResponse(apiKey);
     }
@@ -205,40 +195,20 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     public ApiKeyResponse updateApiKey(UUID userId, UUID keyId, UpdateApiKeyRequest request) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
+        requireOwnership(userId, apiKey.getOrganization(), "API Key");
 
-        accessControlService.checkOrganizationAccess(
-                userId,
-                apiKey.getOrganization(),
-                "API Key"
-        );
-
-        // Update fields
-        if (request.getName() != null) {
-            apiKey.setName(request.getName());
-        }
-
-        if (request.getDescription() != null) {
-            apiKey.setDescription(request.getDescription());
-        }
-
-        if (request.getIsActive() != null) {
-            apiKey.setActive(request.getIsActive());
-        }
-
+        if (request.getName() != null)        apiKey.setName(request.getName());
+        if (request.getDescription() != null)  apiKey.setDescription(request.getDescription());
+        if (request.getIsActive() != null)     apiKey.setActive(request.getIsActive());
         if (request.getExpiresAt() != null) {
-            if (request.getExpiresAt().isBefore(LocalDateTime.now())) {
+            if (request.getExpiresAt().isBefore(LocalDateTime.now()))
                 throw new BadRequestException("Expiration date must be in the future");
-            }
             apiKey.setExpiresAt(request.getExpiresAt());
         }
-
-        if (request.getRateLimitPerMinute() != null) {
-            apiKey.setRateLimitPerMinute(request.getRateLimitPerMinute());
-        }
+        if (request.getRateLimitPerMinute() != null) apiKey.setRateLimitPerMinute(request.getRateLimitPerMinute());
 
         apiKey = apiKeyRepository.save(apiKey);
         log.info("API key updated: id={}", keyId);
-
         return toResponse(apiKey);
     }
 
@@ -247,16 +217,10 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     public void revokeApiKey(UUID userId, UUID keyId) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
-
-        accessControlService.checkOrganizationAccess(
-                userId,
-                apiKey.getOrganization(),
-                "API Key"
-        );
+        requireOwnership(userId, apiKey.getOrganization(), "API Key");
 
         apiKey.setActive(false);
         apiKeyRepository.save(apiKey);
-
         log.warn("API key revoked: id={} by user={}", keyId, userId);
     }
 
@@ -265,12 +229,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     public void deleteApiKey(UUID userId, UUID keyId) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
-
-        accessControlService.checkOrganizationAccess(
-                userId,
-                apiKey.getOrganization(),
-                "API Key"
-        );
+        requireOwnership(userId, apiKey.getOrganization(), "API Key");
 
         apiKeyRepository.delete(apiKey);
         log.warn("API key deleted: id={} by user={}", keyId, userId);
@@ -281,12 +240,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     public CreateApiKeyResult rotateApiKey(UUID userId, UUID keyId) {
         ApiKey oldKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
-
-        accessControlService.checkOrganizationAccess(
-                userId,
-                oldKey.getOrganization(),
-                "API Key"
-        );
+        requireOwnership(userId, oldKey.getOrganization(), "API Key");
 
         // Create request from old key
         CreateApiKeyRequest request = new CreateApiKeyRequest();
@@ -300,30 +254,39 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         List<CreateApiKeyRequest.PermissionRequest> permissions = new ArrayList<>();
         for (ApiKeyPermission perm : oldKey.getPermissions()) {
             permissions.add(new CreateApiKeyRequest.PermissionRequest(
-                    perm.getPermission(),
-                    perm.getResourceType(),
-                    perm.getResourceId()
-            ));
+                    perm.getPermission(), perm.getResourceType(), perm.getResourceId()));
         }
         request.setPermissions(permissions);
 
         // Create new key
-        CreateApiKeyResult result = createApiKey(
-                userId,
-                oldKey.getOrganization().getId(),
-                request
-        );
+        CreateApiKeyResult result = createApiKey(userId, oldKey.getOrganization().getId(), request);
 
         // Revoke old key
         oldKey.setActive(false);
         apiKeyRepository.save(oldKey);
 
         log.info("API key rotated: old={}, new={}", keyId, result.getKeyInfo().getId());
-
         return result;
     }
 
-    // Helper methods
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Throws {@link AccessDeniedException} if {@code userId} is not the owner
+     * of {@code organization}.
+     *
+     * <p>This replaces the deleted {@code AccessControlService.checkOrganizationAccess()}.
+     * The logic is identical — inlined here because {@code ApiKeyService} is the
+     * only JWT-only service that still needs an ownership check across all methods. </p>
+     */
+    private void requireOwnership(UUID userId, Organization organization, String resourceName) {
+        if (!organization.getOwner().getId().equals(userId)) {
+            throw new AccessDeniedException(
+                    "You do not have permission to access this " + resourceName);
+        }
+    }
 
     private void validatePermission(
             CreateApiKeyRequest.PermissionRequest permReq,

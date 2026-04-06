@@ -20,14 +20,18 @@ import java.util.UUID;
 
 /**
  * Mock Schema management controller.
- *
- * SECURITY: All operations are open to both JWT and API key authentication.
- * Schema management — creating, updating, reading and deleting schemas — is
- * the primary use case for programmatic API keys
- *
- * Access control (ownership checks, org/project membership) is enforced in
- * the service layer via {@code AccessControlService}, regardless of how the
- * caller authenticated.
+   * <h3>AUTHORIZATION</h3>
+   * <p>All methods are open to both JWT sessions and API key callers. Authorization
+   * is enforced declaratively via {@code @PreAuthorize("hasPermission(...)")}
+   * annotations on each {@link MockSchemaService} method, evaluated by
+   * {@link com.mockify.backend.security.MockifyPermissionEvaluator}.</p>
+   *
+   * <ul>
+   *   <li><b>JWT callers</b>: full access to all resources within their owned organization.</li>
+   *   <li><b>API key callers</b>: access gated by three sequential guards —
+   *       org scope → project scope → permission level
+   *       (hierarchy: ADMIN ⊇ DELETE ⊇ WRITE ⊇ READ).</li>
+   * </ul>
  */
 @Slf4j
 @RestController
