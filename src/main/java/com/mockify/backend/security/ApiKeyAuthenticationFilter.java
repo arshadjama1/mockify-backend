@@ -110,7 +110,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                         key.getOrganization().getId(),
                         key.getProject() != null ? key.getProject().getId() : null,
                         permissions,
-                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_API_KEY"))
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_API_KEY")),
+                        key.getRateLimitPerMinute()
                 );
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

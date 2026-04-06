@@ -27,6 +27,7 @@ public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
     private final UUID organizationId;
     private final UUID projectId;         // null for org-level keys
     private final List<ApiKeyPermission> permissions;
+    private final int rateLimitPerMinute;
 
     public ApiKeyAuthenticationToken(
             UUID apiKeyId,
@@ -35,12 +36,24 @@ public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
             UUID projectId,
             List<ApiKeyPermission> permissions,
             Collection<? extends GrantedAuthority> authorities) {
+        this(apiKeyId, ownerId, organizationId, projectId, permissions, authorities, 1000);
+    }
+
+    public ApiKeyAuthenticationToken(
+            UUID apiKeyId,
+            UUID ownerId,
+            UUID organizationId,
+            UUID projectId,
+            List<ApiKeyPermission> permissions,
+            Collection<? extends GrantedAuthority> authorities,
+            int rateLimitPerMinute) {
         super(authorities);
         this.apiKeyId = apiKeyId;
         this.ownerId = ownerId;
         this.organizationId = organizationId;
         this.projectId = projectId;
         this.permissions = permissions != null ? permissions : List.of();
+        this.rateLimitPerMinute = rateLimitPerMinute;
         setAuthenticated(true);
     }
 

@@ -1,6 +1,7 @@
 package com.mockify.backend.config;
 
 import com.mockify.backend.security.ApiKeyAuthenticationFilter;
+import com.mockify.backend.security.ApiKeyRateLimitFilter;
 import com.mockify.backend.security.CustomAuthenticationEntryPoint;
 import com.mockify.backend.security.JwtAuthenticationFilter;
 import com.mockify.backend.security.oauth2.CustomOAuth2UserService;
@@ -39,6 +40,7 @@ import java.util.Arrays;
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
+    private final ApiKeyRateLimitFilter apiKeyRateLimitFilter;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Bean
@@ -113,7 +115,9 @@ public class SecurityConfig {
                 // 1. JWT authentication (highest priority)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 // 2. API Key authentication (fallback if no JWT)
-                .addFilterAfter(apiKeyAuthenticationFilter, JwtAuthenticationFilter.class);
+                .addFilterAfter(apiKeyAuthenticationFilter, JwtAuthenticationFilter.class)
+                // 3. API Key rate limiting (runs after auth token is set)
+                .addFilterAfter(apiKeyRateLimitFilter, ApiKeyAuthenticationFilter.class);
 
         return http.build();
     }
