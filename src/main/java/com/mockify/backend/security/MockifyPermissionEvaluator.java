@@ -248,21 +248,21 @@ public class MockifyPermissionEvaluator implements PermissionEvaluator {
     private ResourceContext loadContext(UUID id, String targetType) {
         return switch (targetType) {
             case "ORGANIZATION" -> {
-                Organization org = organizationRepository.findById(id).orElse(null);
+                Organization org = organizationRepository.findByIdWithOwnerAndProjects(id).orElse(null);
                 yield org != null ? new ResourceContext(org, null) : null;
             }
             case "PROJECT" -> {
-                Project project = projectRepository.findById(id).orElse(null);
+                Project project = projectRepository.findByIdWithOrgAndOwner(id).orElse(null);
                 yield project != null ? new ResourceContext(project.getOrganization(), project.getId()) : null;
             }
             case "SCHEMA" -> {
-                MockSchema schema = mockSchemaRepository.findById(id).orElse(null);
+                MockSchema schema = mockSchemaRepository.findWithContextById(id).orElse(null);
                 yield schema != null
                         ? new ResourceContext(schema.getProject().getOrganization(), schema.getProject().getId())
                         : null;
             }
             case "RECORD" -> {
-                MockRecord record = mockRecordRepository.findById(id).orElse(null);
+                MockRecord record = mockRecordRepository.findWithContextById(id).orElse(null);
                 yield record != null
                         ? new ResourceContext(
                         record.getMockSchema().getProject().getOrganization(),
