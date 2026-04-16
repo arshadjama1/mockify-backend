@@ -105,7 +105,8 @@ public class ApiKeyController {
         SecurityUtils.requireJwtAuthentication(auth);
 
         UUID userId = SecurityUtils.resolveUserId(auth);
-        ApiKeyResponse key = apiKeyService.getApiKeyById(userId, keyId);
+        UUID organizationId = endpointService.resolveOrganization(org);
+        ApiKeyResponse key = apiKeyService.getApiKeyById(userId, organizationId, keyId);
         return ResponseEntity.ok(key);
     }
 
@@ -121,9 +122,10 @@ public class ApiKeyController {
         SecurityUtils.requireJwtAuthentication(auth);
 
         UUID userId = SecurityUtils.resolveUserId(auth);
+        UUID organizationId = endpointService.resolveOrganization(org);
         log.info("User {} updating API key {}", userId, keyId);
 
-        ApiKeyResponse updated = apiKeyService.updateApiKey(userId, keyId, request);
+        ApiKeyResponse updated = apiKeyService.updateApiKey(userId, organizationId, keyId, request);
         return ResponseEntity.ok(updated);
     }
 
@@ -138,9 +140,10 @@ public class ApiKeyController {
         SecurityUtils.requireJwtAuthentication(auth);
 
         UUID userId = SecurityUtils.resolveUserId(auth);
+        UUID organizationId = endpointService.resolveOrganization(org);
         log.warn("User {} revoking API key {}", userId, keyId);
 
-        apiKeyService.revokeApiKey(userId, keyId);
+        apiKeyService.revokeApiKey(userId, organizationId, keyId);
         return ResponseEntity.noContent().build();
     }
 
@@ -155,9 +158,10 @@ public class ApiKeyController {
         SecurityUtils.requireJwtAuthentication(auth);
 
         UUID userId = SecurityUtils.resolveUserId(auth);
+        UUID organizationId = endpointService.resolveOrganization(org);
         log.warn("User {} deleting API key {}", userId, keyId);
 
-        apiKeyService.deleteApiKey(userId, keyId);
+        apiKeyService.deleteApiKey(userId, organizationId, keyId);
         return ResponseEntity.noContent().build();
     }
 
@@ -172,9 +176,10 @@ public class ApiKeyController {
         SecurityUtils.requireJwtAuthentication(auth);
 
         UUID userId = SecurityUtils.resolveUserId(auth);
+        UUID organizationId = endpointService.resolveOrganization(org);
         log.info("User {} rotating API key {}", userId, keyId);
 
-        CreateApiKeyResult result = apiKeyService.rotateApiKey(userId, keyId);
+        CreateApiKeyResult result = apiKeyService.rotateApiKey(userId, organizationId, keyId);
         return ResponseEntity.ok(result);
     }
 }

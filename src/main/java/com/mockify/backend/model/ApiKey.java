@@ -39,6 +39,7 @@ public class ApiKey {
      * HMAC-SHA256 hash of the full API key
      * Never store the raw key after initial generation
      */
+    @JsonIgnore
     @Column(name = "key_hash", nullable = false, length = 255)
     private String keyHash;
 
@@ -81,6 +82,7 @@ public class ApiKey {
     private LocalDateTime updatedAt;
 
     // Rate limiting
+    @Builder.Default
     @Column(name = "rate_limit_per_minute", nullable = false)
     private Integer rateLimitPerMinute = 1000;
 

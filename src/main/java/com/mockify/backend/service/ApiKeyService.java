@@ -3,7 +3,6 @@ package com.mockify.backend.service;
 import com.mockify.backend.dto.request.apikey.CreateApiKeyRequest;
 import com.mockify.backend.dto.request.apikey.UpdateApiKeyRequest;
 import com.mockify.backend.dto.response.apikey.ApiKeyResponse;
-import com.mockify.backend.dto.response.apikey.ApiKeyStats;
 import com.mockify.backend.dto.response.apikey.CreateApiKeyResult;
 
 import java.util.List;
@@ -30,26 +29,26 @@ public interface ApiKeyService {
     /**
      * Get API key details by ID
      */
-    ApiKeyResponse getApiKeyById(UUID userId, UUID keyId);
+    ApiKeyResponse getApiKeyById(UUID userId, UUID organizationId, UUID keyId);
 
     /**
      * Update API key metadata (name, description, status, rate limit)
      * Cannot change permissions - must delete and recreate
      */
-    ApiKeyResponse updateApiKey(UUID userId, UUID keyId, UpdateApiKeyRequest request);
+    ApiKeyResponse updateApiKey(UUID userId, UUID organizationId, UUID keyId, UpdateApiKeyRequest request);
 
     /**
      * Revoke (deactivate) API key
      */
-    void revokeApiKey(UUID userId, UUID keyId);
+    void revokeApiKey(UUID userId, UUID organizationId, UUID keyId);
 
     /**
      * Permanently delete API key
      */
-    void deleteApiKey(UUID userId, UUID keyId);
+    void deleteApiKey(UUID userId, UUID organizationId, UUID keyId);
 
     /**
      * Rotate API key (generate new key, revoke old one)
      */
-    CreateApiKeyResult rotateApiKey(UUID userId, UUID keyId);
+    CreateApiKeyResult rotateApiKey(UUID userId, UUID organizationId, UUID keyId);
 }

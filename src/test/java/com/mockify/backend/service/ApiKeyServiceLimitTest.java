@@ -116,7 +116,7 @@ class ApiKeyServiceLimitTest {
 
         // Get one key and revoke it
         var keys = apiKeyService.listOrganizationKeys(testUser.getId(), testOrg.getId());
-        apiKeyService.revokeApiKey(testUser.getId(), keys.get(0).getId());
+        apiKeyService.revokeApiKey(testUser.getId(), testOrg.getId(), keys.get(0).getId());
 
         // Should now be able to create one more
         CreateApiKeyRequest newRequest = CreateApiKeyRequest.builder()

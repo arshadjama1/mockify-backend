@@ -205,6 +205,7 @@ class ApiKeyServiceIntegrationTest {
 
         ApiKeyResponse retrieved = apiKeyService.getApiKeyById(
                 testUser.getId(),
+                testOrg.getId(),
                 result.getKeyInfo().getId()
         );
 
@@ -240,6 +241,7 @@ class ApiKeyServiceIntegrationTest {
 
         ApiKeyResponse updated = apiKeyService.updateApiKey(
                 testUser.getId(),
+                testOrg.getId(),
                 result.getKeyInfo().getId(),
                 updateRequest
         );
@@ -269,11 +271,12 @@ class ApiKeyServiceIntegrationTest {
         );
 
         // Revoke key
-        apiKeyService.revokeApiKey(testUser.getId(), result.getKeyInfo().getId());
+        apiKeyService.revokeApiKey(testUser.getId(), testOrg.getId(), result.getKeyInfo().getId());
 
         // Verify revoked
         ApiKeyResponse revoked = apiKeyService.getApiKeyById(
                 testUser.getId(),
+                testOrg.getId(),
                 result.getKeyInfo().getId()
         );
 
@@ -303,11 +306,11 @@ class ApiKeyServiceIntegrationTest {
         UUID keyId = result.getKeyInfo().getId();
 
         // Delete key
-        apiKeyService.deleteApiKey(testUser.getId(), keyId);
+        apiKeyService.deleteApiKey(testUser.getId(), testOrg.getId(), keyId);
 
         // Verify deleted
         assertThrows(ResourceNotFoundException.class, () -> {
-            apiKeyService.getApiKeyById(testUser.getId(), keyId);
+            apiKeyService.getApiKeyById(testUser.getId(), testOrg.getId(), keyId);
         });
     }
 
@@ -336,6 +339,7 @@ class ApiKeyServiceIntegrationTest {
         // Rotate key
         CreateApiKeyResult rotated = apiKeyService.rotateApiKey(
                 testUser.getId(),
+                testOrg.getId(),
                 originalId
         );
 
@@ -346,6 +350,7 @@ class ApiKeyServiceIntegrationTest {
         // Verify old key is revoked
         ApiKeyResponse oldKey = apiKeyService.getApiKeyById(
                 testUser.getId(),
+                testOrg.getId(),
                 originalId
         );
         assertFalse(oldKey.isActive());

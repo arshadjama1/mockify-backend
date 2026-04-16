@@ -182,20 +182,20 @@ public class ApiKeyServiceImpl implements ApiKeyService {
 
     @Override
     @Transactional(readOnly = true)
-    public ApiKeyResponse getApiKeyById(UUID userId, UUID keyId) {
+    public ApiKeyResponse getApiKeyById(UUID userId, UUID organizationId, UUID keyId) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
-        requireOwnership(userId, apiKey.getOrganization(), "API Key");
+        requireOwnershipWithOrgValidation(userId, organizationId, apiKey.getOrganization(), "API Key");
 
         return toResponse(apiKey);
     }
 
     @Override
     @Transactional
-    public ApiKeyResponse updateApiKey(UUID userId, UUID keyId, UpdateApiKeyRequest request) {
+    public ApiKeyResponse updateApiKey(UUID userId, UUID organizationId, UUID keyId, UpdateApiKeyRequest request) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
-        requireOwnership(userId, apiKey.getOrganization(), "API Key");
+        requireOwnershipWithOrgValidation(userId, organizationId, apiKey.getOrganization(), "API Key");
 
         if (request.getName() != null)        apiKey.setName(request.getName());
         if (request.getDescription() != null)  apiKey.setDescription(request.getDescription());
@@ -214,10 +214,10 @@ public class ApiKeyServiceImpl implements ApiKeyService {
 
     @Override
     @Transactional
-    public void revokeApiKey(UUID userId, UUID keyId) {
+    public void revokeApiKey(UUID userId, UUID organizationId, UUID keyId) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
-        requireOwnership(userId, apiKey.getOrganization(), "API Key");
+        requireOwnershipWithOrgValidation(userId, organizationId, apiKey.getOrganization(), "API Key");
 
         apiKey.setActive(false);
         apiKeyRepository.save(apiKey);
@@ -226,10 +226,10 @@ public class ApiKeyServiceImpl implements ApiKeyService {
 
     @Override
     @Transactional
-    public void deleteApiKey(UUID userId, UUID keyId) {
+    public void deleteApiKey(UUID userId, UUID organizationId, UUID keyId) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
-        requireOwnership(userId, apiKey.getOrganization(), "API Key");
+        requireOwnershipWithOrgValidation(userId, organizationId, apiKey.getOrganization(), "API Key");
 
         apiKeyRepository.delete(apiKey);
         log.warn("API key deleted: id={} by user={}", keyId, userId);
@@ -237,10 +237,10 @@ public class ApiKeyServiceImpl implements ApiKeyService {
 
     @Override
     @Transactional
-    public CreateApiKeyResult rotateApiKey(UUID userId, UUID keyId) {
+    public CreateApiKeyResult rotateApiKey(UUID userId, UUID organizationId, UUID keyId) {
         ApiKey oldKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
-        requireOwnership(userId, oldKey.getOrganization(), "API Key");
+        requireOwnershipWithOrgValidation(userId, organizationId, oldKey.getOrganization(), "API Key");
 
         // Create request from old key
         CreateApiKeyRequest request = new CreateApiKeyRequest();
@@ -285,6 +285,19 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         if (!organization.getOwner().getId().equals(userId)) {
             throw new AccessDeniedException(
                     "You do not have permission to access this " + resourceName);
+        }
+    }
+
+    /**
+     * Ownership check that also validates the key belongs to the org in the URL.
+     * Returns 404 when the org does not match to avoid leaking key existence.
+     */
+    private void requireOwnershipWithOrgValidation(
+            UUID userId, UUID organizationId, Organization keyOrg, String resourceName) {
+        requireOwnership(userId, keyOrg, resourceName);
+        if (!keyOrg.getId().equals(organizationId)) {
+            // Key exists but does not belong to the requested org — surface as 404
+            throw new ResourceNotFoundException(resourceName + " not found");
         }
     }
 
