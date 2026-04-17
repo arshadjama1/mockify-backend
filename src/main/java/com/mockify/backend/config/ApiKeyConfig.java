@@ -1,5 +1,6 @@
 package com.mockify.backend.config;
 
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -26,6 +27,7 @@ public class ApiKeyConfig {
      * Should be different in each environment
      */
     @NotBlank(message = "API key secret must be configured")
+    @Size(min = 32, message = "API key secret must be at least 32 characters")
     private String secret;
 
     /**

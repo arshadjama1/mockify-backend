@@ -1,5 +1,6 @@
 package com.mockify.backend.security;
 
+import com.mockify.backend.exception.AccessDeniedException;
 import com.mockify.backend.exception.ForbiddenException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -41,9 +42,16 @@ public final class SecurityUtils {
             return token.getOwnerId();
         }
         if (auth.getPrincipal() instanceof UserDetails user) {
-            return UUID.fromString(user.getUsername());
+            try {
+                return UUID.fromString(user.getUsername());
+            } catch (IllegalArgumentException ex) {
+                throw new AccessDeniedException(
+                        "Invalid user identifier in authentication token " + ex
+                );
+            }
         }
-        throw new org.springframework.security.access.AccessDeniedException(
+
+        throw new AccessDeniedException(
                 "Unknown authentication type"
         );
     }

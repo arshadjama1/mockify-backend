@@ -65,6 +65,11 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
+        // Respect the global kill switch
+        if (!apiKeyConfig.isEnabled()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // Skip if already authenticated (JWT took precedence)
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
@@ -169,7 +174,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                         candidate.getOrganization().getId().toString(),
                         apiKeyConfig.getSecret()
                 );
-                if (candidate.getKeyHash().equals(cryptoService.hashApiKey(apiKey, orgSecret))) {
+                if (cryptoService.verifyApiKey(apiKey, candidate.getKeyHash(), orgSecret)) {
                     return Optional.of(candidate);
                 }
             }

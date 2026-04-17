@@ -242,7 +242,11 @@ public class ApiKeyServiceImpl implements ApiKeyService {
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
         requireOwnershipWithOrgValidation(userId, organizationId, oldKey.getOrganization(), "API Key");
 
-        // Create request from old key
+        // Revoke FIRST
+        oldKey.setActive(false);
+        apiKeyRepository.save(oldKey);
+
+        // Build the rotation request
         CreateApiKeyRequest request = new CreateApiKeyRequest();
         request.setName(oldKey.getName() + " (Rotated)");
         request.setDescription(oldKey.getDescription());
@@ -258,12 +262,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         }
         request.setPermissions(permissions);
 
-        // Create new key
         CreateApiKeyResult result = createApiKey(userId, oldKey.getOrganization().getId(), request);
-
-        // Revoke old key
-        oldKey.setActive(false);
-        apiKeyRepository.save(oldKey);
 
         log.info("API key rotated: old={}, new={}", keyId, result.getKeyInfo().getId());
         return result;
