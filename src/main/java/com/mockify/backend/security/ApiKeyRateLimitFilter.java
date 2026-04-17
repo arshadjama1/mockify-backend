@@ -48,7 +48,6 @@ import java.util.concurrent.TimeUnit;
  * </ul>
  */
 @Component
-@Order(2)
 @RequiredArgsConstructor
 @Slf4j
 public class ApiKeyRateLimitFilter extends OncePerRequestFilter {

@@ -26,6 +26,7 @@ public class CreateApiKeyRequest {
 
     private UUID projectId;
 
+    @Future(message = "Expiry time must be in the future")
     private LocalDateTime expiresAt;
 
     @Min(value = 1, message = "Rate limit must be at least 1")
