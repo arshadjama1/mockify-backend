@@ -42,6 +42,10 @@ public class Organization {
     @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL)
     private Set<Project> projects = new HashSet<>();
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<OrganizationMember> members = new HashSet<>();
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
