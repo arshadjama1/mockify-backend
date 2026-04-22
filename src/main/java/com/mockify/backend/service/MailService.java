@@ -7,4 +7,7 @@ public interface MailService {
 
     // Send email verification link to email
     void sendEmailVerificationMail(String to, String verifyLink);
+
+    void sendInvitationEmail(String to, String orgName, String inviterName,
+                             String role, String acceptLink);
 }

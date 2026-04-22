@@ -68,6 +68,13 @@ public class MailServiceImpl implements MailService {
         }
     }
 
+    @Override
+    public void sendInvitationEmail(String to, String orgName, String inviterName,
+                                    String role, String acceptLink) {
+        // TODO: implement the logic
+        log.info("STUB — invite email to {} for org {} role {}", to, orgName, role);
+    }
+
     private String buildVerificationHtml(String verificationLink) {
         return """
         <div style="background-color:#f6f8fa; padding:40px 0; 
