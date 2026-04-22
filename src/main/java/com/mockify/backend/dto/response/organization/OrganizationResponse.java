@@ -1,5 +1,6 @@
 package com.mockify.backend.dto.response.organization;
 
+import com.mockify.backend.common.enums.MemberRole;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -18,4 +19,5 @@ public class OrganizationResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private int projectCount;
+    private MemberRole userRole;
 }
