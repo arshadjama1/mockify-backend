@@ -6,6 +6,7 @@ import com.mockify.backend.dto.response.organization.OrganizationDetailResponse;
 import com.mockify.backend.dto.response.organization.OrganizationResponse;
 import com.mockify.backend.dto.response.page.PageResponse;
 import com.mockify.backend.exception.BadRequestException;
+import com.mockify.backend.security.SecurityUtils;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.OrganizationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,8 +19,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,72 +35,90 @@ public class OrganizationController {
     private final OrganizationService organizationService;
     private final EndpointService endpointService;
 
-    // Create organization for logged-in user
+
+    /**
+     * Create a new organization.
+     * SECURITY: JWT-only
+     */
     @PostMapping("/organizations")
     public ResponseEntity<OrganizationResponse> createOrganization(
-            @AuthenticationPrincipal UserDetails userDetails,
+            Authentication auth,
             @Valid @RequestBody CreateOrganizationRequest request) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        SecurityUtils.requireJwtAuthentication(auth);
+
+        UUID userId = SecurityUtils.resolveUserId(auth);
         log.info("User ID {} creating organization: {}", userId, request.getName());
 
         OrganizationResponse response = organizationService.createOrganization(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // Get details of a specific organization
+    /**
+     * Get details of a specific organization.
+     * SECURITY: API keys allowed (read-only)
+     */
     @GetMapping("/organizations/{org}")
     public ResponseEntity<OrganizationDetailResponse> getOrganization(
-            @AuthenticationPrincipal UserDetails userDetails,
+            Authentication auth,
             @PathVariable String org) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID orgId = endpointService.resolveOrganization(org);
 
         log.debug("User {} fetching organization {}", userId, orgId);
 
-        OrganizationDetailResponse response =
-                organizationService.getOrganizationDetail(orgId, userId);
-
+        OrganizationDetailResponse response = organizationService.getOrganizationDetail(orgId, userId);
         return ResponseEntity.ok(response);
     }
 
-    // Get all organizations for current user
+
+    /**
+     * List all organizations for the authenticated user/key owner.
+     * SECURITY: API keys allowed (read-only)
+     */
     @GetMapping("/organizations")
     public ResponseEntity<PageResponse<OrganizationResponse>> getMyOrganizations(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
-
+        UUID userId = SecurityUtils.resolveUserId(auth);
         Page<OrganizationResponse> page = organizationService.getMyOrganizations(userId, pageable);
 
         return ResponseEntity.ok(PageResponse.from(page));
     }
 
-    // Update organization
+    /**
+     * Update organization metadata (name, settings, etc.).
+     * SECURITY: JWT-only
+     */
     @PutMapping("/organizations/{org}")
     public ResponseEntity<OrganizationResponse> updateOrganization(
-            @AuthenticationPrincipal UserDetails userDetails,
+            Authentication auth,
             @PathVariable String org,
             @Valid @RequestBody UpdateOrganizationRequest request) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        SecurityUtils.requireJwtAuthentication(auth);
+
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID orgId = endpointService.resolveOrganization(org);
 
-        OrganizationResponse updated =
-                organizationService.updateOrganization(userId, orgId, request);
-
+        OrganizationResponse updated = organizationService.updateOrganization(userId, orgId, request);
         return ResponseEntity.ok(updated);
     }
 
-    // Delete organization
+    /**
+     * Delete an organization and all its resources.
+     * SECURITY: JWT-only
+     */
     @DeleteMapping("/organizations/{org}")
     public ResponseEntity<Void> deleteOrganization(
-            @AuthenticationPrincipal UserDetails userDetails,
+            Authentication auth,
             @PathVariable String org) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        SecurityUtils.requireJwtAuthentication(auth);
+
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID orgId = endpointService.resolveOrganization(org);
 
         organizationService.deleteOrganization(userId, orgId);

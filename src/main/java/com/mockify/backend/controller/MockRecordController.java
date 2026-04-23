@@ -4,6 +4,7 @@ import com.mockify.backend.dto.request.record.CreateMockRecordRequest;
 import com.mockify.backend.dto.request.record.UpdateMockRecordRequest;
 import com.mockify.backend.dto.response.page.PageResponse;
 import com.mockify.backend.dto.response.record.MockRecordResponse;
+import com.mockify.backend.security.SecurityUtils;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.MockRecordService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,13 +17,27 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Mock Record management controller.
+ * <h3>AUTHORIZATION</h3>
+   * <p>All methods are open to both JWT sessions and API key callers. Authorization
+   * is enforced declaratively via {@code @PreAuthorize("hasPermission(...)")}
+   * annotations on each {@link MockRecordService} method, evaluated by
+   * {@link com.mockify.backend.security.MockifyPermissionEvaluator}.</p>
+   *
+   * <ul>
+   *   <li><b>JWT callers</b>: full access to all resources within their owned organization.</li>
+   *   <li><b>API key callers</b>: access gated by three sequential guards —
+   *       org scope → project scope → permission level
+   *       (hierarchy: ADMIN ⊇ DELETE ⊇ WRITE ⊇ READ).</li>
+   * </ul>
+ */
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -40,9 +55,9 @@ public class MockRecordController {
             @PathVariable String project,
             @PathVariable String schema,
             @Valid @RequestBody CreateMockRecordRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.info("User {} creating new mock record under schema {}", userId, schemaId);
 
@@ -57,9 +72,9 @@ public class MockRecordController {
             @PathVariable String project,
             @PathVariable String schema,
             @Valid @RequestBody List<CreateMockRecordRequest> requests,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
         log.info("User {} bulk creating {} records under schema {}", userId, requests.size(), schemaId);
 
@@ -74,9 +89,9 @@ public class MockRecordController {
             @PathVariable String project,
             @PathVariable String schema,
             @PathVariable UUID recordId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = SecurityUtils.resolveUserId(auth);
         log.debug("User {} fetching record with ID {}", userId, recordId);
 
         MockRecordResponse record = mockRecordService.getRecordById(userId, recordId);
@@ -90,9 +105,9 @@ public class MockRecordController {
             @PathVariable String project,
             @PathVariable String schema,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = SecurityUtils.resolveUserId(auth);
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
 
         Page<MockRecordResponse> page =
@@ -109,9 +124,9 @@ public class MockRecordController {
             @PathVariable String schema,
             @PathVariable UUID recordId,
             @Valid @RequestBody UpdateMockRecordRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = SecurityUtils.resolveUserId(auth);
         log.info("User {} updating record ID {}", userId, recordId);
 
         MockRecordResponse updated = mockRecordService.updateRecord(userId, recordId, request);
@@ -125,9 +140,9 @@ public class MockRecordController {
             @PathVariable String project,
             @PathVariable String schema,
             @PathVariable UUID recordId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication auth) {
 
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        UUID userId = SecurityUtils.resolveUserId(auth);
         log.warn("User {} deleting record ID {}", userId, recordId);
 
         mockRecordService.deleteRecord(userId, recordId);

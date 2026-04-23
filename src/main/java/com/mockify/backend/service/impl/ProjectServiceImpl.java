@@ -13,7 +13,6 @@ import com.mockify.backend.model.Organization;
 import com.mockify.backend.model.Project;
 import com.mockify.backend.repository.OrganizationRepository;
 import com.mockify.backend.repository.ProjectRepository;
-import com.mockify.backend.service.AccessControlService;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.ProjectService;
 import com.mockify.backend.service.SlugService;
@@ -21,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,20 +35,19 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
     private final OrganizationRepository organizationRepository;
     private final ProjectMapper projectMapper;
-    private final AccessControlService accessControlService;
     private final SlugService slugService;
     private final EndpointService endpointService;
 
+    // Create a new project under a specific organization Only
+    // org-level keys or JWT owners only may create new projects.
     @Override
     @Transactional
+    @PreAuthorize("hasPermission(#orgId, 'ORGANIZATION', 'PROJECT:WRITE')")
     public ProjectResponse createProject(UUID userId, UUID orgId, CreateProjectRequest request) {
         log.info("User {} creating project '{}' under organization {}", userId, request.getName(), orgId);
 
         Organization organization = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found with id: " + orgId));
-
-        // Ownership check
-        accessControlService.checkOrganizationAccess(userId, organization, "Organization");
 
         // Generate slug from name
         String slug = slugService.generateSlug(request.getName());
@@ -71,22 +70,19 @@ public class ProjectServiceImpl implements ProjectService {
         Project saved = projectRepository.save(project);
         endpointService.createEndpoint(saved);
 
-        log.info("Project '{}' created successfully by user {}", saved.getName(), userId);
+        log.info("Project '{}' created in org {} by user {}", saved.getName(), orgId, userId);
         return projectMapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @PreAuthorize("hasPermission(#organizationId, 'ORGANIZATION', 'PROJECT:READ')")
     public Page<ProjectResponse> getProjectsByOrganizationId(UUID userId, UUID organizationId, Pageable pageable) {
+
         log.debug("User {} fetching projects for organization {}", userId, organizationId);
 
         // Validate Page size, protect from abuse
         PageableValidator.validate(pageable);
-
-        Organization organization = organizationRepository.findById(organizationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Organization not found with id: " + organizationId));
-
-        accessControlService.checkOrganizationAccess(userId, organization, "Organization");
 
         Page<Project> projectsPage = projectRepository.findByOrganizationId(organizationId, pageable);
 
@@ -101,26 +97,24 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional(readOnly = true)
+    @PreAuthorize("hasPermission(#projectId, 'PROJECT', 'READ')")
     public ProjectDetailResponse getProjectById(UUID userId, UUID projectId) {
         log.debug("User {} fetching project with ID {}", userId, projectId);
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + projectId));
 
-        accessControlService.checkOrganizationAccess(userId, project.getOrganization(), "Project");
-
         return projectMapper.toDetailResponse(project);
     }
 
     @Override
     @Transactional
+    @PreAuthorize("hasPermission(#projectId, 'PROJECT', 'WRITE')")
     public ProjectResponse updateProject(UUID userId, UUID projectId, UpdateProjectRequest request) {
         log.info("User {} updating project with ID {}", userId, projectId);
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + projectId));
-
-        accessControlService.checkOrganizationAccess(userId, project.getOrganization(), "Project");
 
         // Validate duplicate project name
         if (request.getName() != null) {
@@ -144,23 +138,20 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         Project updated = projectRepository.save(project);
-        log.info("Project '{}' updated successfully by user {}", updated.getName(), userId);
-
+        log.info("Project '{}' updated by user {}", updated.getName(), userId);
         return projectMapper.toResponse(updated);
     }
 
     @Override
     @Transactional
+    @PreAuthorize("hasPermission(#projectId, 'PROJECT', 'DELETE')")
     public void deleteProject(UUID userId, UUID projectId) {
         log.info("User {} deleting project with ID {}", userId, projectId);
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + projectId));
-
-        accessControlService.checkOrganizationAccess(userId, project.getOrganization(), "Project");
-
         projectRepository.delete(project);
-        log.info("Project with ID {} deleted successfully by user {}", projectId, userId);
+        log.warn("Project {} deleted by user {}", projectId, userId);
     }
 
     @Override

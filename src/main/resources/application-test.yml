@@ -1,0 +1,53 @@
+# Test Profile Configuration
+
+spring:
+  # Local Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mockify
+    username: mockify_user
+    password: mockify_password
+
+  jpa:
+    show-sql: true
+
+  # Disable Docker Compose in tests
+  docker:
+    compose:
+      enabled: false
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:af84c6a92b8d5f4e1c7d92a6e6a1c56a4e9f45bba782cd51e2e1f67a9c34b12f}
+  access:
+    expiration: ${JWT_ACCESS_EXPIRATION:3600000}
+  refresh:
+    expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+# Application Settings
+app:
+  cookie:
+    refresh-token:
+      name: refresh_token
+      path: /api/auth
+      max-age: 604800
+      secure: false
+      same-site: Lax
+
+  api-key:
+    secret: ${API_KEY_SECRET:your-dev-secret-key-not-for-production-use}
+    max-per-organization: 5   # small limit so ApiKeyServiceLimitTest runs fast
+
+# Actuator: only expose health, disable contributors that need external services
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+  endpoint:
+    health:
+      show-details: never
+  health:
+    redis:
+      enabled: false
+    mail:
+      enabled: false
