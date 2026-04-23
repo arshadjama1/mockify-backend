@@ -138,7 +138,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Find user
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+                .orElseThrow(() -> new UnauthorizedException("Invalid email"));
 
         // Check if it's a local user (has password)
         if (!AUTH_PROVIDER_LOCAL.equals(user.getProviderName())) {
@@ -153,7 +153,7 @@ public class AuthServiceImpl implements AuthService {
         // Validate password
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             log.warn("Failed login attempt for email: {}", request.getEmail());
-            throw new UnauthorizedException("Invalid email or password");
+            throw new UnauthorizedException("Invalid password");
         }
 
         // Generate token based on role

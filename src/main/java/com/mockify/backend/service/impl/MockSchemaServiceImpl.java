@@ -1,6 +1,7 @@
 package com.mockify.backend.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockify.backend.common.validation.PageableValidator;
 import com.mockify.backend.dto.request.schema.CreateMockSchemaRequest;
 import com.mockify.backend.dto.request.schema.UpdateMockSchemaRequest;
 import com.mockify.backend.dto.response.schema.MockSchemaDetailResponse;
@@ -18,6 +19,8 @@ import com.mockify.backend.service.MockValidatorService;
 import com.mockify.backend.service.SlugService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,9 +79,22 @@ public class MockSchemaServiceImpl implements MockSchemaService {
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasPermission(#projectId, 'PROJECT', 'SCHEMA:READ')")
-    public List<MockSchemaResponse> getSchemasByProjectId(UUID userId, UUID projectId) {
-        List<MockSchema> schemas = mockSchemaRepository.findByProjectId(projectId);
-        return mockSchemaMapper.toResponseList(schemas);
+    public Page<MockSchemaResponse> getSchemasByProjectId(UUID userId, UUID projectId, Pageable pageable) {
+
+        // Validate Page size, protect from abuse
+        PageableValidator.validate(pageable);
+
+        Page<MockSchema> schemasPage =
+                mockSchemaRepository.findByProjectId(projectId, pageable);
+
+        log.debug("User {} fetching schemas page={}, size={} under project {}",
+                userId,
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                projectId);
+
+
+        return schemasPage.map(mockSchemaMapper::toResponse);
     }
 
     /*

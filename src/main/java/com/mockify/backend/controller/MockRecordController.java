@@ -2,6 +2,7 @@ package com.mockify.backend.controller;
 
 import com.mockify.backend.dto.request.record.CreateMockRecordRequest;
 import com.mockify.backend.dto.request.record.UpdateMockRecordRequest;
+import com.mockify.backend.dto.response.page.PageResponse;
 import com.mockify.backend.dto.response.record.MockRecordResponse;
 import com.mockify.backend.security.SecurityUtils;
 import com.mockify.backend.service.EndpointService;
@@ -10,6 +11,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -95,18 +100,20 @@ public class MockRecordController {
 
     // Get all records under a specific schema
     @GetMapping("/{org}/{project}/{schema}/records")
-    public ResponseEntity<List<MockRecordResponse>> getRecords(
+    public ResponseEntity<PageResponse<MockRecordResponse>> getRecords(
             @PathVariable String org,
             @PathVariable String project,
             @PathVariable String schema,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication auth) {
 
         UUID userId = SecurityUtils.resolveUserId(auth);
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
-        log.debug("User {} fetching all records under schema {}", userId, schemaId);
 
-        List<MockRecordResponse> records = mockRecordService.getRecordsBySchemaId(userId, schemaId);
-        return ResponseEntity.ok(records);
+        Page<MockRecordResponse> page =
+                mockRecordService.getRecordsBySchemaId(userId, schemaId, pageable);
+
+        return ResponseEntity.ok(PageResponse.from(page));
     }
 
     // Update an existing mock record

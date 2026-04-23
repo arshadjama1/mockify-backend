@@ -1,6 +1,8 @@
 package com.mockify.backend.repository;
 
 import com.mockify.backend.model.MockSchema;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
@@ -14,7 +16,7 @@ import java.util.UUID;
 public interface MockSchemaRepository extends JpaRepository<MockSchema, UUID> {
 
     // Find all schemas under a project
-    List<MockSchema> findByProjectId(UUID projectId);
+    Page<MockSchema> findByProjectId(UUID projectId, Pageable pageable);
 
     // Find schema by name under a project
     MockSchema findByNameAndProjectId(String name, UUID projectId);

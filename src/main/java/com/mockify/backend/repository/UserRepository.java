@@ -1,6 +1,9 @@
 package com.mockify.backend.repository;
 
+import com.mockify.backend.common.enums.UserRole;
 import com.mockify.backend.model.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -27,4 +30,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByProviderNameAndProviderId(String providerName, String providerId);
 
     boolean existsByUsername(String username);
+
+    Page<User> findByEmailContainingIgnoreCase(String email, Pageable pageable);
+
+    Page<User> findByRole(UserRole role, Pageable pageable);
+
+    Page<User> findByEmailContainingIgnoreCaseAndRole(String email, UserRole role, Pageable pageable);
 }

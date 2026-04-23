@@ -1,15 +1,17 @@
 package com.mockify.backend.controller;
 
+import com.mockify.backend.dto.response.page.PageResponse;
 import com.mockify.backend.dto.response.record.MockRecordResponse;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.PublicMockRecordService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -43,15 +45,17 @@ public class PublicMockRecordController {
      * Get all records under a schema (Public/Free User)
      */
     @GetMapping("/{org}/{project}/{schema}/records")
-    public ResponseEntity<List<MockRecordResponse>> getRecords(
+    public ResponseEntity<PageResponse<MockRecordResponse>> getRecords(
             @PathVariable String org,
             @PathVariable String project,
-            @PathVariable String schema) {
+            @PathVariable String schema,
+            @PageableDefault(size = 5, sort = "createdAt") Pageable pageable
+            ) {
 
-        log.info("Public user fetching all records for schemaId={}", schema);
 
         UUID schemaId = endpointService.resolveSchema(org, project, schema);
-        List<MockRecordResponse> records = publicMockRecordService.getRecordsBySchemaId(schemaId);
-        return ResponseEntity.ok(records);
+        Page<MockRecordResponse> page = publicMockRecordService.getRecordsBySchemaId(schemaId, pageable);
+
+        return ResponseEntity.ok(PageResponse.from(page));
     }
 }
