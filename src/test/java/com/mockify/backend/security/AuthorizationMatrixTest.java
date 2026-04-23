@@ -1,5 +1,6 @@
 package com.mockify.backend.security;
 
+import com.mockify.backend.common.enums.MemberRole;
 import com.mockify.backend.common.enums.UserRole;
 import com.mockify.backend.dto.request.organization.UpdateOrganizationRequest;
 import com.mockify.backend.dto.request.record.CreateMockRecordRequest;
@@ -73,6 +74,7 @@ class AuthorizationMatrixTest {
     @Autowired ProjectRepository      projectRepository;
     @Autowired MockSchemaRepository   mockSchemaRepository;
     @Autowired MockRecordRepository   mockRecordRepository;
+    @Autowired OrganizationMemberRepository organizationMemberRepository;
 
     @MockitoBean
     EndpointService endpointService;
@@ -103,7 +105,12 @@ class AuthorizationMatrixTest {
         admin = userRepository.save(buildUser("admin@test.com", UserRole.ADMIN));
 
         orgA = organizationRepository.save(buildOrg("Alice Org", alice));
+        organizationMemberRepository.save(OrganizationMember.builder()
+                .organization(orgA).user(alice).role(MemberRole.OWNER).joinedAt(LocalDateTime.now()).build());
+
         orgB = organizationRepository.save(buildOrg("Bob Org",   bob));
+        organizationMemberRepository.save(OrganizationMember.builder()
+                .organization(orgB).user(bob).role(MemberRole.OWNER).joinedAt(LocalDateTime.now()).build());
 
         projectA = projectRepository.save(buildProject("Alice Project", orgA));
         projectB = projectRepository.save(buildProject("Bob Project",   orgB));

@@ -1,15 +1,13 @@
 package com.mockify.backend.security;
 
+import com.mockify.backend.common.enums.MemberRole;
 import com.mockify.backend.model.ApiKeyPermission.ApiPermission;
 import com.mockify.backend.model.ApiKeyPermission.ApiResourceType;
 import com.mockify.backend.model.MockRecord;
 import com.mockify.backend.model.MockSchema;
 import com.mockify.backend.model.Organization;
 import com.mockify.backend.model.Project;
-import com.mockify.backend.repository.MockRecordRepository;
-import com.mockify.backend.repository.MockSchemaRepository;
-import com.mockify.backend.repository.OrganizationRepository;
-import com.mockify.backend.repository.ProjectRepository;
+import com.mockify.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.PermissionEvaluator;
@@ -18,6 +16,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -89,6 +88,7 @@ public class MockifyPermissionEvaluator implements PermissionEvaluator {
     private final ProjectRepository projectRepository;
     private final MockSchemaRepository mockSchemaRepository;
     private final MockRecordRepository mockRecordRepository;
+    private final OrganizationMemberRepository memberRepository;
 
     // -------------------------------------------------------------------------
     // PermissionEvaluator contract
@@ -181,7 +181,7 @@ public class MockifyPermissionEvaluator implements PermissionEvaluator {
         if (auth instanceof ApiKeyAuthenticationToken token) {
             return evaluateApiKey(token, ctx, resourceType, requiredPermission, targetId, resourceTypeOverride != null);
         } else {
-            return evaluateJwt(auth, ctx);
+            return evaluateJwt(auth, ctx, requiredPermission, resourceType);
         }
     }
 
@@ -189,17 +189,36 @@ public class MockifyPermissionEvaluator implements PermissionEvaluator {
     // JWT path — org ownership is sufficient for all operations
     // -------------------------------------------------------------------------
 
-    private boolean evaluateJwt(Authentication auth, ResourceContext ctx) {
+    private boolean evaluateJwt(Authentication auth, ResourceContext ctx,
+                                ApiPermission requiredPermission, ApiResourceType resourceType) {
         UUID callerId = resolveJwtUserId(auth);
-        if (callerId == null) {
+        if (callerId == null) return false;
+
+        Optional<MemberRole> roleOpt = memberRepository
+                .findRoleByOrganizationIdAndUserId(ctx.organization().getId(), callerId);
+
+        if (roleOpt.isEmpty()) {
+            log.debug("JWT access denied: user {} is not a member of org {}",
+                    callerId, ctx.organization().getId());
             return false;
         }
 
-        boolean owns = ctx.organization().getOwner().getId().equals(callerId);
-        if (!owns) {
-            log.debug("JWT access denied: user {} does not own org {}", callerId, ctx.organization().getId());
+        MemberRole role = roleOpt.get();
+
+        boolean granted = switch (requiredPermission) {
+            case READ  -> true;                                          // any member can read
+            case WRITE -> role.atLeast(MemberRole.DEVELOPER);
+            case DELETE -> resourceType == ApiResourceType.ORGANIZATION
+                    ? role == MemberRole.OWNER
+                    : role.atLeast(MemberRole.ADMIN);
+            case ADMIN -> role.atLeast(MemberRole.ADMIN);
+        };
+
+        if (!granted) {
+            log.debug("JWT access denied: user {} role {} insufficient for {} on {}",
+                    callerId, role, requiredPermission, resourceType);
         }
-        return owns;
+        return granted;
     }
 
     // -------------------------------------------------------------------------
