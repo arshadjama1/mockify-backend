@@ -48,6 +48,8 @@ public class OpenApiConfig {
                         new Tag().name("Authentication").description("User authentication and authorization operations including registration, login, logout, token refresh, and current user retrieval."),
                         new Tag().name("Dashboard").description("Provides summary statistics and health insights for users, organizations, projects, and schemas."),
                         new Tag().name("Organization").description("Operations for managing organizations and their associated resources."),
+                        new Tag().name("Organization Members").description("Team membership, invitations, and role management."),
+                        new Tag().name("Invitations").description("Accept organization invitations via token-based onboarding."),
                         new Tag().name("Project").description("Operations for managing the project lifecycle and related resources."),
                         new Tag().name("Mock Schema Templates").description("Operation for Getting Pre Defined Schema Templates."),
                         new Tag().name("Mock Schema").description("Operations for defining and managing mock data schemas."),

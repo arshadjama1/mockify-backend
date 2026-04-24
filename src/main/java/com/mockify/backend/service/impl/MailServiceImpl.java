@@ -71,8 +71,52 @@ public class MailServiceImpl implements MailService {
     @Override
     public void sendInvitationEmail(String to, String orgName, String inviterName,
                                     String role, String acceptLink) {
-        // TODO: implement the logic
-        log.info("STUB — invite email to {} for org {} role {}", to, orgName, role);
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom("Mockify <mockify.noreply@gmail.com>");
+            helper.setTo(to);
+            helper.setSubject(inviterName + " invited you to " + orgName + " on Mockify");
+            helper.setText(buildInviteHtml(orgName, inviterName, role, acceptLink), true);
+            mailSender.send(message);
+            log.info("Invitation email sent to {}", to);
+        } catch (Exception ex) {
+            log.error("Failed to send invitation email to {}", to, ex);
+        }
+    }
+
+    private String buildInviteHtml(String orgName, String inviterName,
+                                   String role, String acceptLink) {
+        return """
+        <div style="background:#f6f8fa;padding:40px 0;font-family:-apple-system,sans-serif;">
+          <table align="center" width="100%%" cellpadding="0" cellspacing="0"
+                 style="max-width:480px;background:#fff;border-radius:6px;border:1px solid #d0d7de;">
+            <tr><td style="padding:32px;">
+              <h2 style="text-align:center;margin-top:0;color:#24292f;font-size:20px;">
+                You're invited to join %s
+              </h2>
+              <p style="color:#57606a;font-size:14px;line-height:1.5;">
+                <strong>%s</strong> has invited you to collaborate on
+                <strong>%s</strong> as a <strong>%s</strong>.
+              </p>
+              <div style="margin:24px 0;text-align:center;">
+                <a href="%s"
+                   style="background:#2da44e;color:#fff;padding:10px 20px;
+                          text-decoration:none;border-radius:6px;font-size:14px;
+                          display:inline-block;">
+                  Accept invitation
+                </a>
+              </div>
+              <p style="color:#57606a;font-size:13px;">
+                This invitation expires in <strong>48 hours</strong>.
+              </p>
+              <p style="font-size:13px;color:#57606a;margin-top:24px;">
+                Thanks,<br><strong>The Mockify Team</strong>
+              </p>
+            </td></tr>
+          </table>
+        </div>
+    """.formatted(orgName, inviterName, orgName, role, acceptLink);
     }
 
     private String buildVerificationHtml(String verificationLink) {
