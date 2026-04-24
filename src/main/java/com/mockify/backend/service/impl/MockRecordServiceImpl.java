@@ -142,6 +142,7 @@ public class MockRecordServiceImpl implements MockRecordService {
 
         log.debug("Fetching records for userId={}, schemaId={}", userId, schemaId);
 
+        // Validate Page size, protect from abuse
         PageableValidator.validate(pageable, 50);
 
         Page<MockRecord> recordsPage =
