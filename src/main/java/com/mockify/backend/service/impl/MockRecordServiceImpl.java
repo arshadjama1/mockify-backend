@@ -94,6 +94,9 @@ public class MockRecordServiceImpl implements MockRecordService {
 
         if (count <= 0)
             throw new BadRequestException("Count must be greater than 0");
+        if (count > MAX_AUTO_GENERATE_COUNT)
+            throw new BadRequestException(
+                    "Count must not exceed " + MAX_AUTO_GENERATE_COUNT);
 
         MockSchema schema = mockSchemaRepository.findById(schemaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Schema not found"));
