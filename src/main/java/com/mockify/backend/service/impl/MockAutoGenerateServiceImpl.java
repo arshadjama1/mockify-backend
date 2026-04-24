@@ -11,6 +11,7 @@ import java.util.function.Supplier;
 public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
 
     private final Faker faker = new Faker();
+    private final Random random = new Random();
 
     // Exact field generators (base definitions)
     private final Map<String, Supplier<Object>> fieldGenerators = Map.of(
@@ -36,10 +37,12 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
         for (Map.Entry<String, Object> entry : schemaJson.entrySet()) {
 
             String field = entry.getKey();
-            String type = String.valueOf(entry.getValue()).toLowerCase();
+            Object schemaDef = entry.getValue();
+
+            ParsedSchema parsed = parseSchema(field, schemaDef);
 
             Supplier<Object> generator = resolveFieldGenerator(field)
-                    .orElseGet(() -> resolveTypeGenerator(type));
+                    .orElseGet(() -> resolveTypeGenerator(parsed.type(), parsed.enumValues()));
 
             record.put(field, generator.get());
         }
@@ -48,15 +51,49 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
     }
 
     /**
+     * Parse schema definition safely
+     */
+    private ParsedSchema parseSchema(String field, Object schemaDef) {
+
+        if (schemaDef instanceof String s) {
+            return new ParsedSchema(s.toLowerCase(), null);
+        }
+
+        if (schemaDef instanceof Map<?, ?> defMap) {
+
+            Object typeObj = defMap.get("type");
+            if (!(typeObj instanceof String typeStr)) {
+                throw new IllegalArgumentException(
+                        "Missing or invalid 'type' for field: " + field
+                );
+            }
+
+            List<?> enumValues = null;
+            Object valuesObj = defMap.get("values");
+            if (valuesObj instanceof List<?>) {
+                enumValues = (List<?>) valuesObj;
+            }
+
+            return new ParsedSchema(typeStr.toLowerCase(), enumValues);
+        }
+
+        throw new IllegalArgumentException(
+                "Invalid schema format for field: " + field
+        );
+    }
+
+    /**
      * Try to resolve generator based on field name (fuzzy matching)
      */
     private Optional<Supplier<Object>> resolveFieldGenerator(String field) {
         String f = field.toLowerCase();
 
-        if (f.contains("email")) return Optional.of(fieldGenerators.get("email"));
-        if (f.contains("username")) return Optional.of(fieldGenerators.get("username"));
-        if (f.equals("id") || f.endsWith("id")) return Optional.of(fieldGenerators.get("id"));
-        if (f.contains("name")) return Optional.of(fieldGenerators.get("name"));
+
+        if (f.contains("email")) return Optional.ofNullable(fieldGenerators.get("email"));
+        if (f.contains("username")) return Optional.ofNullable(fieldGenerators.get("username"));
+        if (f.equals("id") || f.endsWith("id")) return Optional.ofNullable(fieldGenerators.get("id"));
+        if (f.contains("name")) return Optional.ofNullable(fieldGenerators.get("name"));
+
 
         return Optional.empty();
     }
@@ -64,7 +101,18 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
     /**
      * Resolve generator based on type or throw clear error
      */
-    private Supplier<Object> resolveTypeGenerator(String type) {
+    /**
+     * Type-based generator with ENUM support
+     */
+    private Supplier<Object> resolveTypeGenerator(String type, List<?> enumValues) {
+
+        if ("enum".equals(type)) {
+            if (enumValues == null || enumValues.isEmpty()) {
+                throw new IllegalArgumentException("ENUM type requires non-empty values list");
+            }
+            return () -> enumValues.get(random.nextInt(enumValues.size()));
+        }
+
         Supplier<Object> generator = typeGenerators.get(type);
 
         if (generator == null) {
@@ -73,4 +121,9 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
 
         return generator;
     }
+
+    /**
+     * Internal record for parsed schema
+     */
+    private record ParsedSchema(String type, List<?> enumValues) {}
 }
