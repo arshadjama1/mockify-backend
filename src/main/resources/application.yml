@@ -95,6 +95,10 @@ cleanup:
     enabled: true
     cron: "0 */10 * * * *" # every 10 minutes
 
+  invitations:
+    enabled: true
+    cron: "0 0 * * * *"   # top of every hour
+
 # Actuator configuration
 management:
   endpoints:
