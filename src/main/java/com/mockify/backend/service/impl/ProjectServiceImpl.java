@@ -1,5 +1,6 @@
 package com.mockify.backend.service.impl;
 
+import com.mockify.backend.common.validation.PageableValidator;
 import com.mockify.backend.dto.request.project.CreateProjectRequest;
 import com.mockify.backend.dto.request.project.UpdateProjectRequest;
 import com.mockify.backend.dto.response.project.ProjectDetailResponse;
@@ -17,6 +18,8 @@ import com.mockify.backend.service.ProjectService;
 import com.mockify.backend.service.SlugService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,14 +77,22 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasPermission(#organizationId, 'ORGANIZATION', 'PROJECT:READ')")
-    public List<ProjectResponse> getProjectsByOrganizationId(UUID userId, UUID organizationId) {
+    public Page<ProjectResponse> getProjectsByOrganizationId(UUID userId, UUID organizationId, Pageable pageable) {
+
         log.debug("User {} fetching projects for organization {}", userId, organizationId);
 
-        Organization organization = organizationRepository.findById(organizationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Organization not found with id: " + organizationId));
+        // Validate Page size, protect from abuse
+        PageableValidator.validate(pageable);
 
-        List<Project> projects = projectRepository.findByOrganizationId(organizationId);
-        return projectMapper.toResponseList(projects);
+        Page<Project> projectsPage = projectRepository.findByOrganizationId(organizationId, pageable);
+
+        log.debug("User {} fetching project page={}, size={} under org {}",
+                userId,
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                organizationId);
+
+        return projectsPage.map(projectMapper::toResponse);
     }
 
     @Override

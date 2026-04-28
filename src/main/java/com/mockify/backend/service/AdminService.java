@@ -1,19 +1,23 @@
 package com.mockify.backend.service;
 
+import com.mockify.backend.common.enums.UserRole;
 import com.mockify.backend.dto.response.admin.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface AdminService {
 
-    List<AdminUserResponse> listUsers();
+    Page<AdminUserResponse> listUsers(String email, UserRole role, Pageable pageable);
 
-    List<AdminOrganizationResponse> listOrganizations();
+    Page<AdminOrganizationResponse> listOrganizations(UUID userId, Pageable pageable);
 
-    List<AdminProjectResponse> listProjects();
+    Page<AdminProjectResponse> listProjects(UUID orgId, Pageable pageable);
 
-    List<AdminMockSchemaResponse> listSchemas();
+    Page<AdminMockSchemaResponse> listSchemas(UUID projectId, Pageable pageable);
 
-    List<AdminMockRecordResponse> listRecords();
+    Page<AdminMockRecordResponse> listRecords(UUID schemaId, Pageable pageable);
 
 }

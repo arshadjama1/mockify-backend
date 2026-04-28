@@ -1,6 +1,9 @@
 package com.mockify.backend.service;
 
 import com.mockify.backend.dto.response.record.MockRecordResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -10,11 +13,12 @@ public interface PublicMockRecordService {
     MockRecordResponse getRecordById(UUID schemaId, UUID recordId);
 
     // Get all records under Aa schema (public user)
-    List<MockRecordResponse> getRecordsBySchemaId(UUID schemaId);
+    Page<MockRecordResponse> getRecordsBySchemaId(UUID schemaId, Pageable pageable);
 
-    List<MockRecordResponse> getRecordsBySlug(
+    Page<MockRecordResponse> getRecordsBySlug(
             String orgSlug,
             String projectSlug,
-            String schemaSlug
+            String schemaSlug,
+            Pageable pageable
     );
 }

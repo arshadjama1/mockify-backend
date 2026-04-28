@@ -4,6 +4,8 @@ import com.mockify.backend.dto.request.schema.CreateMockSchemaRequest;
 import com.mockify.backend.dto.request.schema.UpdateMockSchemaRequest;
 import com.mockify.backend.dto.response.schema.MockSchemaDetailResponse;
 import com.mockify.backend.dto.response.schema.MockSchemaResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +17,7 @@ public interface MockSchemaService {
     MockSchemaResponse createSchema(UUID userId, UUID projectId, CreateMockSchemaRequest request);
 
     // Get all schemas for a project
-    List<MockSchemaResponse> getSchemasByProjectId(UUID userId, UUID projectId);
+    Page<MockSchemaResponse> getSchemasByProjectId(UUID userId, UUID projectId, Pageable pageable);
 
     // Get a schema by its ID
     MockSchemaDetailResponse getSchemaById(UUID userId, UUID schemaId);

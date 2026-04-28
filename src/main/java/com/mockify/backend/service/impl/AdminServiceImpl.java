@@ -1,19 +1,28 @@
 package com.mockify.backend.service.impl;
 
+import com.mockify.backend.common.enums.UserRole;
+import com.mockify.backend.common.validation.PageableValidator;
 import com.mockify.backend.dto.response.admin.AdminUserResponse;
 import com.mockify.backend.dto.response.admin.AdminOrganizationResponse;
 import com.mockify.backend.dto.response.admin.AdminProjectResponse;
 import com.mockify.backend.dto.response.admin.AdminMockSchemaResponse;
 import com.mockify.backend.dto.response.admin.AdminMockRecordResponse;
 import com.mockify.backend.mapper.admin.*;
+import com.mockify.backend.model.MockRecord;
+import com.mockify.backend.model.MockSchema;
+import com.mockify.backend.model.Organization;
+import com.mockify.backend.model.Project;
 import com.mockify.backend.repository.*;
 import com.mockify.backend.service.AdminService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.UUID;
 
-import java.util.List;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -32,28 +41,126 @@ public class AdminServiceImpl implements AdminService {
     private final AdminMockRecordMapper recordMapper;
 
     @Override
-    public List<AdminUserResponse> listUsers() {
-        return userMapper.toResponseList(userRepository.findAll());
+    public Page<AdminUserResponse> listUsers(String email, UserRole role, Pageable pageable) {
+
+        // Validate page size, protect from abuse
+        PageableValidator.validate(pageable);
+
+        // List all users info
+        if (email != null && role != null) {
+            return userRepository
+                    .findByEmailContainingIgnoreCaseAndRole(email, role, pageable)
+                    .map(userMapper::toResponse);
+        }
+
+        // Specific user via email
+        if (email != null) {
+            return userRepository
+                    .findByEmailContainingIgnoreCase(email, pageable)
+                    .map(userMapper::toResponse);
+        }
+
+        // List user with role
+        if (role != null) {
+            return userRepository
+                    .findByRole(role, pageable)
+                    .map(userMapper::toResponse);
+        }
+
+        log.debug("Admin fetching users details page={}, size={}",
+                pageable.getPageNumber(),
+                pageable.getPageSize());
+
+        return userRepository.findAll(pageable)
+                .map(userMapper::toResponse);
     }
 
     @Override
-    public List<AdminOrganizationResponse> listOrganizations() {
-        return organizationMapper.toResponseList(organizationRepository.findAll());
+    public Page<AdminOrganizationResponse> listOrganizations(UUID userId, Pageable pageable) {
+
+        // Validate page size, protect from abuse
+        PageableValidator.validate(pageable);
+
+        Page<Organization> page;
+
+        // Admin can see all Org or specific Org
+        if (userId != null) {
+            page = organizationRepository.findByOwnerId(userId, pageable);
+        } else {
+            page = organizationRepository.findAll(pageable);
+        }
+
+        log.debug("Admin fetching Organization details page={}, size={}",
+                pageable.getPageNumber(),
+                pageable.getPageSize());
+
+        return page.map(organizationMapper::toResponse);
     }
 
     @Override
-    public List<AdminProjectResponse> listProjects() {
-        return projectMapper.toResponseList(projectRepository.findAll());
+    public Page<AdminProjectResponse> listProjects(UUID orgId, Pageable pageable) {
+
+        // Validate page size, protect from abuse
+        PageableValidator.validate(pageable);
+
+        Page<Project> page;
+
+        // Admin can see all Projects or specific project under a Org
+        if (orgId != null) {
+            page = projectRepository.findByOrganizationId(orgId, pageable);
+        } else {
+            page = projectRepository.findAll(pageable);
+        }
+
+        log.debug("Admin fetching Project details page={}, size={}",
+                pageable.getPageNumber(),
+                pageable.getPageSize());
+
+        return page.map(projectMapper::toResponse);
     }
 
     @Override
-    public List<AdminMockSchemaResponse> listSchemas() {
-        return schemaMapper.toResponseList(mockSchemaRepository.findAll());
+    public Page<AdminMockSchemaResponse> listSchemas(UUID projectId, Pageable pageable) {
+
+        // Validate page size, protect from abuse
+        PageableValidator.validate(pageable);
+
+        Page<MockSchema> page;
+
+        // Admin can see all schema or specific schema under a project
+        if (projectId != null) {
+            page = mockSchemaRepository.findByProjectId(projectId, pageable);
+        } else {
+            page = mockSchemaRepository.findAll(pageable);
+        }
+
+        log.debug("Admin fetching schema details page={}, size={}",
+                pageable.getPageNumber(),
+                pageable.getPageSize());
+
+        return page.map(schemaMapper::toResponse);
     }
 
     @Override
-    public List<AdminMockRecordResponse> listRecords() {
-        return recordMapper.toResponseList(mockRecordRepository.findAll());
+    public Page<AdminMockRecordResponse> listRecords(UUID schemaId, Pageable pageable) {
+
+        // Validate page size, protect from abuse
+        PageableValidator.validate(pageable);
+
+        Page<MockRecord> page;
+
+        // Admin can see all records or specific records under a schema
+        if (schemaId != null) {
+            page = mockRecordRepository.findByMockSchema_Id(schemaId, pageable);
+        } else {
+            page = mockRecordRepository.findAll(pageable);
+        }
+
+        log.debug("Admin fetching record details page={}, size={}",
+                pageable.getPageNumber(),
+                pageable.getPageSize());
+
+        return page.map(recordMapper::toResponse);
     }
 
     // TODO: Leter we add promote/demote users

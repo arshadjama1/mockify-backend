@@ -4,6 +4,7 @@ import com.mockify.backend.security.ApiKeyAuthenticationFilter;
 import com.mockify.backend.security.ApiKeyRateLimitFilter;
 import com.mockify.backend.security.CustomAuthenticationEntryPoint;
 import com.mockify.backend.security.JwtAuthenticationFilter;
+import com.mockify.backend.security.RateLimitFilter;
 import com.mockify.backend.security.oauth2.CustomOAuth2UserService;
 import com.mockify.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
     private final ApiKeyRateLimitFilter apiKeyRateLimitFilter;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
@@ -114,10 +116,15 @@ public class SecurityConfig {
                 // Authentication filters
                 // 1. JWT authentication (highest priority)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
                 // 2. API Key authentication (fallback if no JWT)
                 .addFilterAfter(apiKeyAuthenticationFilter, JwtAuthenticationFilter.class)
-                // 3. API Key rate limiting (runs after auth token is set)
-                .addFilterAfter(apiKeyRateLimitFilter, ApiKeyAuthenticationFilter.class);
+
+                // 3. General rate limiting (global + group rules)
+                .addFilterAfter(rateLimitFilter, ApiKeyAuthenticationFilter.class)
+
+                // 4. API Key-specific rate limiting (per key quotas, stricter limits)
+                .addFilterAfter(apiKeyRateLimitFilter, RateLimitFilter.class)
 
         return http.build();
     }

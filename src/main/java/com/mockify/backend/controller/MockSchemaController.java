@@ -1,7 +1,9 @@
 package com.mockify.backend.controller;
 
+import com.mockify.backend.common.validation.PageableValidator;
 import com.mockify.backend.dto.request.schema.CreateMockSchemaRequest;
 import com.mockify.backend.dto.request.schema.UpdateMockSchemaRequest;
+import com.mockify.backend.dto.response.page.PageResponse;
 import com.mockify.backend.dto.response.schema.MockSchemaDetailResponse;
 import com.mockify.backend.dto.response.schema.MockSchemaResponse;
 import com.mockify.backend.security.SecurityUtils;
@@ -10,6 +12,10 @@ import com.mockify.backend.service.MockSchemaService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -117,16 +123,18 @@ public class MockSchemaController {
      * Get all schemas under a project
      */
     @GetMapping("/{org}/{project}/schemas")
-    public ResponseEntity<List<MockSchemaResponse>> getSchemasByProject(
+    public ResponseEntity<PageResponse<MockSchemaResponse>> getSchemasByProject(
             @PathVariable String org,
             @PathVariable String project,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable,
             Authentication auth) {
 
         UUID userId = SecurityUtils.resolveUserId(auth);
         UUID projectId = endpointService.resolveProject(org, project);
-        log.debug("User {} fetching schemas under project {}", userId, projectId);
 
-        List<MockSchemaResponse> schemas = mockSchemaService.getSchemasByProjectId(userId, projectId);
-        return ResponseEntity.ok(schemas);
+        Page<MockSchemaResponse> page = mockSchemaService.getSchemasByProjectId(userId, projectId, pageable);
+
+        return ResponseEntity.ok(PageResponse.from(page));
     }
 }

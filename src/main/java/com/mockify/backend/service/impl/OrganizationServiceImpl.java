@@ -1,5 +1,6 @@
 package com.mockify.backend.service.impl;
 
+import com.mockify.backend.common.validation.PageableValidator;
 import com.mockify.backend.dto.request.organization.CreateOrganizationRequest;
 import com.mockify.backend.dto.request.organization.UpdateOrganizationRequest;
 import com.mockify.backend.dto.response.organization.OrganizationDetailResponse;
@@ -17,6 +18,8 @@ import com.mockify.backend.service.OrganizationService;
 import com.mockify.backend.service.SlugService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -98,10 +101,21 @@ public class OrganizationServiceImpl implements OrganizationService {
     // Returns only the caller's own orgs — no cross-org risk, no guard needed.
     @Transactional(readOnly = true)
     @Override
-    public List<OrganizationResponse> getMyOrganizations(UUID userId) {
+    public Page<OrganizationResponse> getMyOrganizations(UUID userId, Pageable pageable) {
+
         log.debug("Fetching organizations for user ID: {}", userId);
-        List<Organization> organizations = organizationRepository.findByOwnerId(userId);
-        return organizationMapper.toResponseList(organizations);
+
+        // Validate Page size, protect from abuse
+        PageableValidator.validate(pageable, 50);
+
+        Page<Organization> organizationsPage = organizationRepository.findByOwnerId(userId, pageable);
+
+        log.debug("User {} fetching Orgs page={}, size={} under user: {}",
+                userId,
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                userId);
+        return organizationsPage.map(organizationMapper::toResponse);
     }
 
     // Update organization name or details

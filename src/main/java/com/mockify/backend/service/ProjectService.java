@@ -4,6 +4,8 @@ import com.mockify.backend.dto.request.project.CreateProjectRequest;
 import com.mockify.backend.dto.request.project.UpdateProjectRequest;
 import com.mockify.backend.dto.response.project.ProjectDetailResponse;
 import com.mockify.backend.dto.response.project.ProjectResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.UUID;
@@ -14,7 +16,7 @@ public interface ProjectService {
     ProjectResponse createProject(UUID userId, UUID orgId, CreateProjectRequest request);
 
     // Get all projects under a specific organization
-    List<ProjectResponse> getProjectsByOrganizationId(UUID userId, UUID organizationId);
+    Page<ProjectResponse> getProjectsByOrganizationId(UUID userId, UUID organizationId, Pageable pageable);
 
     // Fetch project details by ID
     ProjectDetailResponse getProjectById(UUID userId, UUID projectId);

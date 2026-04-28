@@ -1,6 +1,9 @@
 package com.mockify.backend.repository;
 
+import com.mockify.backend.dto.response.admin.AdminOrganizationResponse;
 import com.mockify.backend.model.Organization;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,6 +18,8 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
 
     // Find all organizations owned by a user
     List<Organization> findByOwnerId(UUID ownerId);
+
+    Page<Organization> findByOwnerId(UUID ownerId, Pageable pageable);
 
     // Find organization with owner and projects
     @Query("SELECT DISTINCT o FROM Organization o " +

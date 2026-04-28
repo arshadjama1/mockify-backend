@@ -1,5 +1,6 @@
 package com.mockify.backend.service.impl;
 
+import com.mockify.backend.common.validation.PageableValidator;
 import com.mockify.backend.dto.response.record.MockRecordResponse;
 import com.mockify.backend.exception.ResourceNotFoundException;
 import com.mockify.backend.mapper.MockRecordMapper;
@@ -16,6 +17,8 @@ import com.mockify.backend.service.PublicMockRecordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,25 +54,36 @@ public class PublicMockRecordServiceImpl implements PublicMockRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MockRecordResponse> getRecordsBySchemaId(UUID schemaId) {
-        log.info("Public user requesting all records for schemaId={}", schemaId);
+    public Page<MockRecordResponse> getRecordsBySchemaId(UUID schemaId, Pageable pageable) {
 
-        List<MockRecord> records = mockRecordRepository.findByMockSchema_Id(schemaId);
+        // Validate Page size, protect from abuse
+        PageableValidator.validate(pageable, 20);
 
-        return mockRecordMapper.toResponseList(records);
+        Page<MockRecord> recordsPage = mockRecordRepository.findByMockSchema_Id(schemaId, pageable);
+
+        log.info("Public user fetching records page={}, size={} under schemaId {}",
+                recordsPage.getNumber(),
+                recordsPage.getSize(),
+                schemaId);
+
+        return recordsPage.map(mockRecordMapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MockRecordResponse> getRecordsBySlug(
+    public Page<MockRecordResponse> getRecordsBySlug(
             String orgSlug,
             String projectSlug,
-            String schemaSlug
+            String schemaSlug,
+            Pageable pageable
     ) {
         log.info(
                 "Public user requesting records for org={}, project={}, schema={}",
                 orgSlug, projectSlug, schemaSlug
         );
+
+        // Validate Page size, protect from abuse
+        PageableValidator.validate(pageable, 20);
 
         Organization organization = organizationRepository.findBySlug(orgSlug)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
@@ -84,9 +98,14 @@ public class PublicMockRecordServiceImpl implements PublicMockRecordService {
                 project.getId()
         ).orElseThrow(() -> new ResourceNotFoundException("Schema not found"));
 
-        List<MockRecord> records =
-                mockRecordRepository.findByMockSchema_Id(schema.getId());
+        Page<MockRecord> recordsPage =
+                mockRecordRepository.findByMockSchema_Id(schema.getId(), pageable);
 
-        return mockRecordMapper.toResponseList(records);
+        log.info("Public user fetching records page={}, size={} under schema {}",
+                recordsPage.getNumber(),
+                recordsPage.getSize(),
+                schemaSlug);
+
+        return recordsPage.map(mockRecordMapper::toResponse);
     }
 }

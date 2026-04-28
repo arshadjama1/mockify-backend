@@ -59,7 +59,7 @@ Thumbs.db
 ### Docker ###
 *.pid
 .env
-docker-compose.override.yml
+compose.override.yml
 
 ### Reports ###
 /surefire-reports/
