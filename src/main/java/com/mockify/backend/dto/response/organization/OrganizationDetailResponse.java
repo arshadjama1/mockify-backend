@@ -1,5 +1,6 @@
 package com.mockify.backend.dto.response.organization;
 
+import com.mockify.backend.common.enums.MemberRole;
 import com.mockify.backend.dto.response.auth.UserResponse;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ public class OrganizationDetailResponse {
     private UserResponse owner;
     private LocalDateTime createdAt;
     private List<ProjectSummary> projects;
+    private MemberRole userRole;
 
     @Data
     public static class ProjectSummary {

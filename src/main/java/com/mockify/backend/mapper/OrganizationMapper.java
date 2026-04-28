@@ -25,6 +25,7 @@ public interface OrganizationMapper {
     // Detailed response with owner & projects
     @Mapping(target = "owner", source = "owner")
     @Mapping(target = "projects", source = "projects")
+    @Mapping(target = "userRole", ignore = true)
     OrganizationDetailResponse toDetailResponse(Organization organization);
 
     // Project summary for nested response
