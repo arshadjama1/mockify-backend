@@ -8,9 +8,28 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(SandboxExpiredException.class)
+    public ResponseEntity<Map<String, Object>> handleSandboxExpired(
+            SandboxExpiredException ex,
+            HttpServletRequest req) {
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.GONE.value());
+        body.put("error", "Sandbox Expired");
+        body.put("errorCode", "SANDBOX_EXPIRED");
+        body.put("message", ex.getMessage());
+        body.put("path", req.getRequestURI());
+        body.put("convertUrl", "/api/sandbox/convert");
+
+        return new ResponseEntity<>(body, HttpStatus.GONE);
+    }
 
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<ErrorResponse> handleBaseException(BaseException ex, HttpServletRequest req) {

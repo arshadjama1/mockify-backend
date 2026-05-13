@@ -52,4 +52,6 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
      * Used to return only real (non-sandbox) orgs in the user-facing listing.
      */
     Page<Organization> findByOwnerIdAndIsSandboxFalse(UUID ownerId, Pageable pageable);
+
+    Optional<Organization> findByOwnerIdAndIsSandboxTrue(UUID ownerId);
 }
