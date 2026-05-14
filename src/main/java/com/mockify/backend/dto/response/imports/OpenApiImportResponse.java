@@ -4,6 +4,10 @@ import com.mockify.backend.dto.response.schema.MockSchemaResponse;
 import lombok.*;
 import java.util.List;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class OpenApiImportResponse {
 
     private List<MockSchemaResponse> imported;

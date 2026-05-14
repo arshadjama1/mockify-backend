@@ -1,10 +1,12 @@
 package com.mockify.backend.controller;
 
 
+import com.mockify.backend.dto.request.imports.OpenApiImportRequest;
 import com.mockify.backend.dto.response.imports.OpenApiImportResponse;
 import com.mockify.backend.security.SecurityUtils;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.OpenApiImportService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -32,13 +34,14 @@ public class OpenApiImportController {
     public ResponseEntity<OpenApiImportResponse> importOpenApi(
             @PathVariable String org,
             @PathVariable String project,
-            @RequestPart("file") MultipartFile file,
+            @ModelAttribute @Valid OpenApiImportRequest request,
             Authentication auth
     ) {
 
         UUID userId = SecurityUtils.resolveUserId(auth);
-
         UUID projectId = endpointService.resolveProject(org, project);
+
+        MultipartFile file = request.getFile();
 
         log.info("User {} importing OpenAPI file '{}' into org='{}', project='{}'",
                 userId,
