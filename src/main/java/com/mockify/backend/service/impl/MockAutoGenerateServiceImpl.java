@@ -4,34 +4,64 @@ import com.github.javafaker.Faker;
 import com.mockify.backend.service.MockAutoGenerateService;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 
 @Service
 public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
 
-    private final Faker faker = new Faker();
-    private final Random random = new Random();
+    private static final ThreadLocal<Faker> FAKER =
+            ThreadLocal.withInitial(Faker::new);
 
-    // Exact field generators (base definitions)
-    private final Map<String, Supplier<Object>> fieldGenerators = Map.of(
-            "email", () -> faker.internet().emailAddress(),
-            "username", () -> faker.name().username(),
-            "id", () -> faker.number().numberBetween(1, 100000),
-            "name", () -> faker.name().fullName()
+    private Faker faker() {
+        return FAKER.get();
+    }
+
+    // Exact field generators
+    private final Map<String, Supplier<Object>> fieldGenerators = Map.ofEntries(
+            Map.entry("id", () -> faker().number().numberBetween(1, 100000)),
+            Map.entry("name", () -> faker().name().fullName()),
+            Map.entry("firstName", () -> faker().name().firstName()),
+            Map.entry("lastName", () -> faker().name().lastName()),
+            Map.entry("username", () -> faker().name().username()),
+            Map.entry("email", () -> faker().internet().emailAddress()),
+            Map.entry("phone", () -> faker().phoneNumber().cellPhone()),
+            Map.entry("city", () -> faker().address().city()),
+            Map.entry("state", () -> faker().address().state()),
+            Map.entry("country", () -> faker().address().country()),
+            Map.entry("zipCode", () -> faker().address().zipCode()),
+            Map.entry("company", () -> faker().company().name()),
+            Map.entry("title", () -> faker().job().title()),
+            Map.entry("createdAt", () -> Instant.now().toString()),
+            Map.entry("updatedAt", () -> Instant.now().toString()),
+            Map.entry("uuid", () -> UUID.randomUUID().toString()),
+            Map.entry("url", () -> faker().internet().url())
     );
 
     // Type-based generators
-    private final Map<String, Supplier<Object>> typeGenerators = Map.of(
-            "string", () -> faker.lorem().word(),
-            "number", () -> faker.number().numberBetween(1, 1000),
-            "boolean", () -> faker.bool().bool(),
-            "array", () -> List.of(faker.lorem().word(), faker.number().randomDigit()),
-            "object", () -> Map.of("value", faker.lorem().word())
+    private final Map<String, Supplier<Object>> typeGenerators = Map.ofEntries(
+            Map.entry("string", () -> faker().lorem().word()),
+            Map.entry("number", () -> faker().number().numberBetween(1, 1000)),
+            Map.entry("boolean", () -> faker().bool().bool()),
+            Map.entry("date", () -> LocalDate.now().toString()),
+            Map.entry("date-time", () -> Instant.now().toString()),
+            Map.entry("uuid", () -> UUID.randomUUID().toString()),
+            Map.entry("url", () -> faker().internet().url()),
+            Map.entry("array", () -> List.of(
+                    faker().lorem().word(),
+                    faker().number().randomDigit()
+            )),
+            Map.entry("object", () -> Map.of(
+                    "value", faker().lorem().word()
+            ))
     );
 
     @Override
     public Map<String, Object> generateRecord(Map<String, Object> schemaJson) {
+
         Map<String, Object> record = new LinkedHashMap<>();
 
         for (Map.Entry<String, Object> entry : schemaJson.entrySet()) {
@@ -42,7 +72,12 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
             ParsedSchema parsed = parseSchema(field, schemaDef);
 
             Supplier<Object> generator = resolveFieldGenerator(field)
-                    .orElseGet(() -> resolveTypeGenerator(parsed.type(), parsed.enumValues()));
+                    .orElseGet(() ->
+                            resolveTypeGenerator(
+                                    parsed.type(),
+                                    parsed.enumValues()
+                            )
+                    );
 
             record.put(field, generator.get());
         }
@@ -62,6 +97,7 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
         if (schemaDef instanceof Map<?, ?> defMap) {
 
             Object typeObj = defMap.get("type");
+
             if (!(typeObj instanceof String typeStr)) {
                 throw new IllegalArgumentException(
                         "Missing or invalid 'type' for field: " + field
@@ -69,7 +105,9 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
             }
 
             List<?> enumValues = null;
+
             Object valuesObj = defMap.get("values");
+
             if (valuesObj instanceof List<?>) {
                 enumValues = (List<?>) valuesObj;
             }
@@ -86,14 +124,20 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
      * Try to resolve generator based on field name (fuzzy matching)
      */
     private Optional<Supplier<Object>> resolveFieldGenerator(String field) {
+
         String f = field.toLowerCase();
 
+        if (f.contains("email"))
+            return Optional.ofNullable(fieldGenerators.get("email"));
 
-        if (f.contains("email")) return Optional.ofNullable(fieldGenerators.get("email"));
-        if (f.contains("username")) return Optional.ofNullable(fieldGenerators.get("username"));
-        if (f.equals("id") || f.endsWith("id")) return Optional.ofNullable(fieldGenerators.get("id"));
-        if (f.contains("name")) return Optional.ofNullable(fieldGenerators.get("name"));
+        if (f.contains("username"))
+            return Optional.ofNullable(fieldGenerators.get("username"));
 
+        if (f.equals("id") || f.endsWith("id"))
+            return Optional.ofNullable(fieldGenerators.get("id"));
+
+        if (f.contains("name"))
+            return Optional.ofNullable(fieldGenerators.get("name"));
 
         return Optional.empty();
     }
@@ -107,16 +151,24 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
     private Supplier<Object> resolveTypeGenerator(String type, List<?> enumValues) {
 
         if ("enum".equals(type)) {
+
             if (enumValues == null || enumValues.isEmpty()) {
-                throw new IllegalArgumentException("ENUM type requires non-empty values list");
+                throw new IllegalArgumentException(
+                        "ENUM type requires non-empty values list"
+                );
             }
-            return () -> enumValues.get(random.nextInt(enumValues.size()));
+
+            return () -> enumValues.get(
+                    ThreadLocalRandom.current().nextInt(enumValues.size())
+            );
         }
 
         Supplier<Object> generator = typeGenerators.get(type);
 
         if (generator == null) {
-            throw new IllegalArgumentException("Unsupported field type: " + type);
+            throw new IllegalArgumentException(
+                    "Unsupported field type: " + type
+            );
         }
 
         return generator;
