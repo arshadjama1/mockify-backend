@@ -22,7 +22,6 @@ public class MockValidatorServiceImpl implements MockValidatorService {
 
     private enum ALLOWED_TYPES {
 
-
         STRING("string"),
         NUMBER("number"),
         BOOLEAN("boolean"),
@@ -54,8 +53,16 @@ public class MockValidatorServiceImpl implements MockValidatorService {
     }
 
 
-    // validateSchemaDefinition
-
+    /**
+     * SCHEMA VALIDATION
+     *
+     * Supports:
+     * - Primitive fields
+     * - Arrays
+     * - Nested objects
+     * - JSON objects
+     * - Enums
+     */
     @Override
     public void validateSchemaDefinition(Map<String, Object> schemaJson) {
 
@@ -72,35 +79,117 @@ public class MockValidatorServiceImpl implements MockValidatorService {
                 throw new BadRequestException("Schema field name cannot be empty");
             }
 
-            ALLOWED_TYPES type;
-
-
+            /*
+             * SIMPLE TYPE:
+             * "name": "string"
+             */
             if (definition instanceof String strType) {
-                type = parseType(field, strType);
-            } else if (definition instanceof Map<?, ?> defMap) {
+
+                parseType(field, strType);
+                continue;
+            }
+
+            /*
+             * COMPLEX FIELD:
+             * object / array / enum / nested object
+             */
+            if (definition instanceof Map<?, ?> defMap) {
 
                 Object typeObj = defMap.get("type");
-                if (!(typeObj instanceof String)) {
-                    throw new BadRequestException("Field '" + field + "' must define a type");
+
+                /*
+                 * NESTED OBJECT SUPPORT:
+                 *
+                 * Example:
+                 * "profile": {
+                 *    "age": "number",
+                 *    "gender": "string"
+                 * }
+                 *
+                 * No explicit "type" means recursive object
+                 */
+                if (typeObj == null) {
+
+                    validateSchemaDefinition(castToStringObjectMap(defMap));
+                    continue;
                 }
 
-                type = parseType(field, typeObj.toString());
+                if (!(typeObj instanceof String)) {
+                    throw new BadRequestException(
+                            "Field '" + field + "' must define a valid type"
+                    );
+                }
 
+                ALLOWED_TYPES type = parseType(field, typeObj.toString());
+
+                /*
+                 * ENUM validation
+                 */
                 if (type == ALLOWED_TYPES.ENUM) {
+
                     Object values = defMap.get("values");
+
                     if (!(values instanceof List<?> list) || list.isEmpty()) {
-                        throw new BadRequestException("Enum field '" + field + "' must define non-empty values");
+                        throw new BadRequestException(
+                                "Enum field '" + field +
+                                        "' must define non-empty values"
+                        );
                     }
                 }
-            } else {
-                throw new BadRequestException("Invalid schema format for field '" + field + "'");
+
+                /*
+                 * ARRAY validation
+                 */
+                if (type == ALLOWED_TYPES.ARRAY) {
+
+                    Object items = defMap.get("items");
+
+                    if (items == null) {
+                        throw new BadRequestException(
+                                "Array field '" + field +
+                                        "' must define items"
+                        );
+                    }
+                }
+
+                /*
+                 * OBJECT / JSON recursive validation
+                 */
+                if (type == ALLOWED_TYPES.OBJECT ||
+                        type == ALLOWED_TYPES.JSON) {
+
+                    for (Map.Entry<?, ?> nestedEntry : defMap.entrySet()) {
+
+                        String nestedField = nestedEntry.getKey().toString();
+
+                        if ("type".equals(nestedField)) {
+                            continue;
+                        }
+
+                        validateNestedDefinition(
+                                field,
+                                nestedField,
+                                nestedEntry.getValue()
+                        );
+                    }
+                }
+
+                continue;
             }
+
+            throw new BadRequestException(
+                    "Invalid schema format for field '" + field + "'"
+            );
         }
     }
 
 
-    // Record Validation
-
+    /**
+     * RECORD VALIDATION
+     *
+     * Validates user records against schema,
+     * including nested object structures.
+     */
     @Override
     public void validateRecordAgainstSchema(
             Map<String, Object> schemaJson,
@@ -119,67 +208,157 @@ public class MockValidatorServiceImpl implements MockValidatorService {
             Object schemaDef = entry.getValue();
 
             if (!recordJson.containsKey(field)) {
-                throw new BadRequestException("Missing field '" + field + "' in record");
+                throw new BadRequestException(
+                        "Missing field '" + field + "' in record"
+                );
             }
 
             Object value = recordJson.get(field);
 
-            ALLOWED_TYPES type;
-            List<?> enumValues = null;
-
+            /*
+             * SIMPLE TYPE
+             */
             if (schemaDef instanceof String strType) {
-                type = parseType(field, strType);
-            } else if (schemaDef instanceof Map<?, ?> defMap) {
+
+                ALLOWED_TYPES type = parseType(field, strType);
+                validateValueByType(field, type, value, null);
+
+                continue;
+            }
+
+            /*
+             * COMPLEX TYPE
+             */
+            if (schemaDef instanceof Map<?, ?> defMap) {
 
                 Object typeObj = defMap.get("type");
 
+                /*
+                 * NESTED OBJECT
+                 */
                 if (typeObj == null) {
-                    throw new BadRequestException(
-                            "Field '" + field + "' schema must define a 'type' property"
+
+                    require(
+                            value instanceof Map<?, ?>,
+                            field,
+                            "object"
                     );
+
+                    validateRecordAgainstSchema(
+                            castToStringObjectMap(defMap),
+                            castToStringObjectMap((Map<?, ?>) value)
+                    );
+
+                    continue;
                 }
 
                 if (!(typeObj instanceof String)) {
                     throw new BadRequestException(
-                            "Field '" + field + "' schema 'type' must be a string"
+                            "Field '" + field +
+                                    "' schema type must be string"
                     );
                 }
 
-                type = parseType(field, (String) typeObj);
+                ALLOWED_TYPES type =
+                        parseType(field, typeObj.toString());
 
+                List<?> enumValues = null;
 
                 if (type == ALLOWED_TYPES.ENUM) {
                     enumValues = (List<?>) defMap.get("values");
                 }
-            } else {
-                throw new BadRequestException("Invalid schema definition for field '" + field + "'");
+
+                /*
+                 * ARRAY validation
+                 */
+                if (type == ALLOWED_TYPES.ARRAY) {
+
+                    require(
+                            value instanceof List<?>,
+                            field,
+                            "array"
+                    );
+
+                    continue;
+                }
+
+                /*
+                 * OBJECT recursive validation
+                 */
+                if (type == ALLOWED_TYPES.OBJECT ||
+                        type == ALLOWED_TYPES.JSON) {
+
+                    require(
+                            value instanceof Map<?, ?>,
+                            field,
+                            "object"
+                    );
+
+                    Map<String, Object> nestedSchema =
+                            extractNestedSchema(defMap);
+
+                    validateRecordAgainstSchema(
+                            nestedSchema,
+                            castToStringObjectMap((Map<?, ?>) value)
+                    );
+
+                    continue;
+                }
+
+                validateValueByType(
+                        field,
+                        type,
+                        value,
+                        enumValues
+                );
+
+                continue;
             }
 
-            validateValueByType(field, type, value, enumValues);
+            throw new BadRequestException(
+                    "Invalid schema definition for field '" + field + "'"
+            );
         }
 
-        // Extra field protection
+        /*
+         * Extra field protection
+         */
         for (String field : recordJson.keySet()) {
             if (!schemaJson.containsKey(field)) {
-                throw new BadRequestException("Field '" + field + "' is not allowed in this schema");
+                throw new BadRequestException(
+                        "Field '" + field +
+                                "' is not allowed in this schema"
+                );
             }
         }
     }
 
 
-    // validateValueByType
-
-    private void validateValueByType(String field, ALLOWED_TYPES type, Object value, List<?> enumValues) {
+    /**
+     * VALUE TYPE VALIDATION
+     */
+    private void validateValueByType(
+            String field,
+            ALLOWED_TYPES type,
+            Object value,
+            List<?> enumValues
+    ) {
 
         if (type == ALLOWED_TYPES.NULL) {
+
             if (value != null) {
-                throw new BadRequestException("Field '" + field + "' must be null");
+                throw new BadRequestException(
+                        "Field '" + field + "' must be null"
+                );
             }
+
             return;
         }
 
         if (value == null) {
-            throw new BadRequestException("Field '" + field + "' cannot be null");
+            throw new BadRequestException(
+                    "Field '" + field + "' cannot be null"
+            );
         }
 
         switch (type) {
@@ -207,17 +386,23 @@ public class MockValidatorServiceImpl implements MockValidatorService {
 
             case EMAIL:
                 require(value instanceof String, field, "email");
+
                 if (!EmailValidator.getInstance().isValid(value.toString())) {
-                    throw new BadRequestException("Invalid email format for field '" + field + "'");
+                    throw new BadRequestException(
+                            "Invalid email format for field '" + field + "'"
+                    );
                 }
                 break;
 
             case UUID:
                 require(value instanceof String, field, "uuid");
+
                 try {
                     UUID.fromString(value.toString());
                 } catch (Exception e) {
-                    throw new BadRequestException("Invalid UUID format for field '" + field + "'");
+                    throw new BadRequestException(
+                            "Invalid UUID format for field '" + field + "'"
+                    );
                 }
                 break;
 
@@ -237,10 +422,13 @@ public class MockValidatorServiceImpl implements MockValidatorService {
 
             case DATETIME:
                 require(value instanceof String, field, "datetime");
+
                 try {
                     OffsetDateTime.parse(value.toString());
                 } catch (Exception e) {
-                    throw new BadRequestException("Invalid datetime format (ISO-8601) for field '" + field + "'");
+                    throw new BadRequestException(
+                            "Invalid datetime format for field '" + field + "'"
+                    );
                 }
                 break;
 
@@ -251,8 +439,7 @@ public class MockValidatorServiceImpl implements MockValidatorService {
                     new URI(value.toString());
                 } catch (Exception e) {
                     throw new BadRequestException(
-                            "Invalid URL format for field '"
-                                    + field + "'"
+                            "Invalid URL format for field '" + field + "'"
                     );
                 }
                 break;
@@ -260,26 +447,109 @@ public class MockValidatorServiceImpl implements MockValidatorService {
             case ENUM:
                 if (enumValues == null || !enumValues.contains(value)) {
                     throw new BadRequestException(
-                            "Invalid enum value for field '" + field + "'. Allowed: " + enumValues
+                            "Invalid enum value for field '" +
+                                    field +
+                                    "'. Allowed: " +
+                                    enumValues
                     );
                 }
                 break;
         }
     }
 
-    private void require(boolean condition, String field, String type) {
-        if (!condition) {
-            throw new BadRequestException("Field '" + field + "' must be of type " + type);
+
+    /**
+     * Validate nested field definitions recursively
+     */
+    private void validateNestedDefinition(
+            String parentField,
+            String nestedField,
+            Object nestedDef
+    ) {
+
+        if (!(nestedDef instanceof String) &&
+                !(nestedDef instanceof Map<?, ?>)) {
+
+            throw new BadRequestException(
+                    "Nested field '" + nestedField +
+                            "' inside '" + parentField +
+                            "' has invalid definition"
+            );
         }
     }
 
-    // Helper (internal only)
 
-    private ALLOWED_TYPES parseType(String field, String typeStr) {
+    /**
+     * Extract nested schema by removing "type"
+     */
+    private Map<String, Object> extractNestedSchema(
+            Map<?, ?> defMap
+    ) {
+
+        Map<String, Object> nested = new HashMap<>();
+
+        for (Map.Entry<?, ?> entry : defMap.entrySet()) {
+
+            String key = entry.getKey().toString();
+
+            if ("type".equals(key)) {
+                continue;
+            }
+
+            nested.put(key, entry.getValue());
+        }
+
+        return nested;
+    }
+
+
+    /**
+     * Generic safe casting helper
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> castToStringObjectMap(
+            Map<?, ?> map
+    ) {
+
+        return (Map<String, Object>) map;
+    }
+
+
+    /**
+     * Validation helper
+     */
+    private void require(
+            boolean condition,
+            String field,
+            String type
+    ) {
+
+        if (!condition) {
+            throw new BadRequestException(
+                    "Field '" + field +
+                            "' must be of type " + type
+            );
+        }
+    }
+
+
+    /**
+     * Type parser helper
+     */
+    private ALLOWED_TYPES parseType(
+            String field,
+            String typeStr
+    ) {
+
         try {
             return ALLOWED_TYPES.from(typeStr);
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid type for field '" + field + "': " + typeStr);
+        } catch (Exception e) {
+            throw new BadRequestException(
+                    "Invalid type for field '" +
+                            field +
+                            "': " +
+                            typeStr
+            );
         }
     }
 }

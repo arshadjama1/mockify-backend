@@ -23,9 +23,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -43,7 +43,7 @@ public class MockSchemaServiceImpl implements MockSchemaService {
 
     // Create a new mock schema under a specific project Only
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @PreAuthorize("hasPermission(#projectId, 'PROJECT', 'SCHEMA:WRITE')")
     public MockSchemaResponse createSchema(UUID userId, UUID projectId, CreateMockSchemaRequest request) {
         Project project = projectRepository.findById(projectId)
