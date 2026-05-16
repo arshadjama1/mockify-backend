@@ -1,0 +1,34 @@
+openapi: 3.0.3
+info:
+  title: Basic Valid API
+  version: 1.0.0
+  description: Simple OpenAPI specification for testing Mockify import functionality
+
+paths:
+  /posts:
+    get:
+      summary: Get all blog posts
+      responses:
+        '200':
+          description: Successful response
+
+components:
+  schemas:
+    BlogPost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        authorEmail:
+          type: string
+          format: email
+        published:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time

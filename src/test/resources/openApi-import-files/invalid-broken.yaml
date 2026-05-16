@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: Invalid Broken API
+  version: 1.0.0
+  description: This file intentionally contains syntax and structural errors for testing Mockify validation
+
+servers:
+  - url: https://invalid-api.mockify.com
+
+paths:
+  /users:
+    get:
+      summary: Get all users
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items
+                $ref: '#/components/schemas/User'   # ERROR: Missing colon after 'items'
+
+  /products
+  post:                                          # ERROR: Missing colon after /products
+    summary: Create product
+    requestBody:
+      required true                              # ERROR: Missing colon
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProductInput'
+    responses:
+      '201':
+        description Product created              # ERROR: Missing colon
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+
+components:
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email
+        type: string                            # ERROR: Missing colon after email
+
+    Product:
+      type: object
+      required:
+        - id
+        - name
+        - price
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        price:
+          type: number
+          format: float
+
+    ProductInput:
+      type: object
+      required:
+        - name
+        - price
+      properties:
+        name:
+          type: string
+        price:
+          type: number
+
+security:
+  - bearerAuth                                   # ERROR: Invalid security format

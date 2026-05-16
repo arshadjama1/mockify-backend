@@ -1,0 +1,195 @@
+swagger: "2.0"
+info:
+  title: Swagger 2.0 Compatibility Test API
+  version: "1.0.0"
+  description: Swagger 2.0 specification for testing backward compatibility in Mockify OpenAPI import
+
+host: api.example.com
+basePath: /v1
+schemes:
+  - https
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+paths:
+  /users:
+    get:
+      summary: Get all users
+      responses:
+        200:
+          description: Successful response
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/User"
+
+    post:
+      summary: Create a new user
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/User"
+      responses:
+        201:
+          description: User created successfully
+
+  /posts:
+    get:
+      summary: Get all posts
+      responses:
+        200:
+          description: Successful response
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Post"
+
+    post:
+      summary: Create a new post
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/Post"
+      responses:
+        201:
+          description: Post created successfully
+
+definitions:
+
+  User:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      username:
+        type: string
+      email:
+        type: string
+        format: email
+      fullName:
+        type: string
+      bio:
+        type: string
+      profile:
+        type: object
+        properties:
+          age:
+            type: integer
+          gender:
+            type: string
+          avatar:
+            type: object
+            properties:
+              url:
+                type: string
+                format: uri
+              thumbnailUrl:
+                type: string
+                format: uri
+          socialLinks:
+            type: object
+            properties:
+              website:
+                type: string
+                format: uri
+              twitter:
+                type: string
+                format: uri
+              instagram:
+                type: string
+                format: uri
+      address:
+        type: object
+        properties:
+          street:
+            type: string
+          city:
+            type: string
+          state:
+            type: string
+          zipCode:
+            type: string
+          country:
+            type: string
+      createdAt:
+        type: string
+        format: date-time
+    required:
+      - id
+      - username
+      - email
+
+  Post:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      user:
+        type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+          username:
+            type: string
+          profileImage:
+            type: string
+            format: uri
+      content:
+        type: string
+      media:
+        type: object
+        properties:
+          imageUrl:
+            type: string
+            format: uri
+          videoUrl:
+            type: string
+            format: uri
+          mediaType:
+            type: string
+      engagement:
+        type: object
+        properties:
+          likesCount:
+            type: integer
+          commentsCount:
+            type: integer
+          sharesCount:
+            type: integer
+      comments:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            user:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                username:
+                  type: string
+            content:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+      createdAt:
+        type: string
+        format: date-time
+    required:
+      - id
+      - content

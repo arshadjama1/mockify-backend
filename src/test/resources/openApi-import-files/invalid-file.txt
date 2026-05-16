@@ -1,0 +1,12 @@
+This is not a valid OpenAPI specification file.
+
+Mockify should reject this file because:
+- Unsupported file extension (.txt)
+- Not YAML or JSON
+- No OpenAPI or Swagger structure
+- Invalid parser input
+
+Expected Result:
+{
+  "error": "Unsupported file type. Please upload .yaml, .yml, or .json files only."
+}
