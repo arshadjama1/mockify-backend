@@ -133,15 +133,47 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
         if (f.contains("username"))
             return Optional.ofNullable(fieldGenerators.get("username"));
 
+        if (f.contains("uuid"))
+            return Optional.ofNullable(fieldGenerators.get("uuid"));
+
+        if (f.contains("url"))
+            return Optional.ofNullable(fieldGenerators.get("url"));
+
+        if (f.contains("phone"))
+            return Optional.ofNullable(fieldGenerators.get("phone"));
+
         if (f.equals("id") || f.endsWith("id"))
             return Optional.ofNullable(fieldGenerators.get("id"));
 
         if (f.contains("name"))
             return Optional.ofNullable(fieldGenerators.get("name"));
 
+        if (f.contains("city"))
+            return Optional.ofNullable(fieldGenerators.get("city"));
+
+        if (f.contains("state"))
+            return Optional.ofNullable(fieldGenerators.get("state"));
+
+        if (f.contains("country"))
+            return Optional.ofNullable(fieldGenerators.get("country"));
+
+        if (f.contains("zipcode"))
+            return Optional.ofNullable(fieldGenerators.get("zipCode"));
+
+        if (f.contains("company"))
+            return Optional.ofNullable(fieldGenerators.get("company"));
+
+        if (f.contains("title"))
+            return Optional.ofNullable(fieldGenerators.get("title"));
+
+        if (f.contains("createdat"))
+            return Optional.ofNullable(fieldGenerators.get("createdAt"));
+
+        if (f.contains("updatedat"))
+            return Optional.ofNullable(fieldGenerators.get("updatedAt"));
+
         return Optional.empty();
     }
-
     /**
      * Resolve generator based on type or throw clear error
      */
