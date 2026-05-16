@@ -5,6 +5,7 @@ import com.mockify.backend.dto.request.schema.CreateMockSchemaRequest;
 import com.mockify.backend.dto.response.imports.OpenApiImportResponse;
 import com.mockify.backend.dto.response.imports.SkippedSchema;
 import com.mockify.backend.dto.response.schema.MockSchemaResponse;
+import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.exception.ResourceNotFoundException;
 import com.mockify.backend.model.Project;
 import com.mockify.backend.repository.ProjectRepository;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import io.swagger.v3.oas.models.media.Schema;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +51,8 @@ public class OpenApiImportServiceImpl implements OpenApiImportService {
     private final MockSchemaService mockSchemaService;
     private final ProjectRepository projectRepository;
 
+    private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+
     /**
      * Import OpenAPI file and auto-generate mock schemas
      *
@@ -82,6 +84,9 @@ public class OpenApiImportServiceImpl implements OpenApiImportService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Project not found")
                 );
+
+        // validate the file
+        validateFile(file);
 
         // Parse uploaded file
         ParsedOpenApiSpec parsedSpec = parserService.parse(file);
@@ -170,5 +175,44 @@ public class OpenApiImportServiceImpl implements OpenApiImportService {
                 importedSchemas,
                 skippedSchemas
         );
+    }
+
+
+    /**
+     * Validates uploaded OpenAPI specification file before parsing.
+     *
+     * Validation Rules:
+     * 1. File must be present and not empty
+     * 2. File extension must be one of:
+     *    - .yaml
+     *    - .yml
+     *    - .json
+     * 3. File size must not exceed configured maximum limit
+     *
+     * @param file uploaded multipart OpenAPI specification file
+     */
+    private void validateFile(MultipartFile file) {
+
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("OpenAPI file is required");
+        }
+
+        String filename = file.getOriginalFilename();
+
+        if (filename == null ||
+                (!filename.endsWith(".yaml") &&
+                        !filename.endsWith(".yml") &&
+                        !filename.endsWith(".json"))) {
+
+            throw new BadRequestException(
+                    "Unsupported file type. Please upload .yaml, .yml, or .json files only."
+            );
+        }
+
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BadRequestException(
+                    "File size exceeds maximum allowed limit of 2 MB."
+            );
+        }
     }
 }

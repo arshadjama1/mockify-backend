@@ -81,9 +81,10 @@ public class OpenApiValidatorServiceImpl implements OpenApiValidatorService {
      *
      * MVP supports:
      * - OpenAPI 3.x
+     * - Swagger 2.0
      *
      * Future:
-     * - Swagger 2.0
+     * JSON
      */
     private void validateVersion(String version) {
 

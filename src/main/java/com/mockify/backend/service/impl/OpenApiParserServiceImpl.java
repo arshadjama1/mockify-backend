@@ -17,23 +17,23 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * OpenApiParserService
+ * Parse uploaded API specification into normalized internal ParsedOpenApiSpec.
  *
- * Responsibility:
- * - Accept uploaded OpenAPI/Swagger file
- * - Parse JSON/YAML into OpenAPI object
- * - Detect OpenAPI version
- * - Extract schemas from:
- *      OpenAPI 3.x -> components.schemas
- *      Swagger 2.x -> definitions
- * - Normalize into ParsedOpenApiSpec
+ * Supported:
+ * - OpenAPI 3.x
+ * - Swagger 2.0
  *
- * This service does NOT:
- * - validate business rules
- * - create schemas
- * - save database records
+ * Features:
+ * - YAML / JSON parsing
+ * - Automatic $ref resolution
+ * - Reusable schema extraction
+ * - Legacy Swagger compatibility
  *
- * It only parses raw specification safely.
+ * Security:
+ * - Defensive null/empty validation
+ * - Structural validation
+ * - Safe parser failure handling
+ *
  */
 @Service
 @Slf4j
@@ -48,7 +48,7 @@ public class OpenApiParserServiceImpl implements OpenApiParserService {
     @Override
     public ParsedOpenApiSpec parse(MultipartFile file) {
 
-        // Validate file existence before parsing
+        // Defensive validation
         if (file == null || file.isEmpty()) {
             throw new InvalidOpenApiException("Uploaded OpenAPI file is empty");
         }
@@ -87,18 +87,42 @@ public class OpenApiParserServiceImpl implements OpenApiParserService {
                 throw new InvalidOpenApiException("Unable to parse OpenAPI specification");
             }
 
-            // Detect OpenAPI version
-            String version = openAPI.getOpenapi();
+            /*
+             * Detect specification version.
+             *
+             * OpenAPI 3:
+             * openapi field
+             *
+             * Swagger 2:
+             * parser may normalize,
+             * so fallback to raw content detection.
+             */
+            String version;
 
-            // If version missing, likely unsupported Swagger file
-            if (version == null || version.isBlank()) {
+            if (openAPI.getOpenapi() != null &&
+                    !openAPI.getOpenapi().isBlank()) {
+
+                version = openAPI.getOpenapi();
+
+            } else if (content.contains("swagger: \"2.0\"") ||
+                    content.contains("swagger: '2.0'") ||
+                    content.contains("swagger: 2.0")) {
+
+                version = "2.0";
+
+            } else {
+
                 throw new InvalidOpenApiException(
-                        "Unsupported specification. Only OpenAPI 3.x is supported in MVP"
+                        "Unsupported or unknown API specification version"
                 );
             }
 
-            // Extract schemas from components section
-            Map<String, Schema> schemas = extractSchemas(openAPI);
+            /*
+             * Extract reusable schemas:
+             * - OpenAPI 3 -> components.schemas
+             * - Swagger 2 -> definitions
+             */
+            Map<String, Schema> schemas = extractSchemas(openAPI, version);
 
             log.info(
                     "Successfully parsed OpenAPI file '{}' | version={} | schemas={}",
@@ -129,21 +153,38 @@ public class OpenApiParserServiceImpl implements OpenApiParserService {
      * components.schemas
      *
      * Swagger 2:
-     * definitions (future enhancement)
+     * definitions
      *
      * @param openAPI parsed OpenAPI object
      * @return schema map
      */
-    private Map<String, Schema> extractSchemas(OpenAPI openAPI) {
+    private Map<String, Schema> extractSchemas(OpenAPI openAPI, String version) {
 
-        // Ensure components section exists
-        if (openAPI.getComponents() == null ||
-                openAPI.getComponents().getSchemas() == null) {
+        /*
+         * Primary extraction:
+         * OpenAPI 3 components
+         */
+        if (openAPI.getComponents() != null &&
+                openAPI.getComponents().getSchemas() != null) {
 
-            log.warn("No schemas found inside OpenAPI components");
+            return openAPI.getComponents().getSchemas();
+        }
+
+        /*
+         * Swagger 2 fallback:
+         * Parser often converts definitions automatically,
+         * but if schemas are absent,
+         * return empty map gracefully.
+         */
+        if ("2.0".equals(version)) {
+
+            log.warn("Swagger 2.0 specification parsed, but no reusable definitions found");
+
             return Collections.emptyMap();
         }
 
-        return openAPI.getComponents().getSchemas();
+        log.warn("No reusable schemas found inside specification");
+
+        return Collections.emptyMap();
     }
 }
