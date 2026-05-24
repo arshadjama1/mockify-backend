@@ -1,10 +1,6 @@
 package com.mockify.backend.config;
 
-import com.mockify.backend.security.ApiKeyAuthenticationFilter;
-import com.mockify.backend.security.ApiKeyRateLimitFilter;
-import com.mockify.backend.security.CustomAuthenticationEntryPoint;
-import com.mockify.backend.security.JwtAuthenticationFilter;
-import com.mockify.backend.security.RateLimitFilter;
+import com.mockify.backend.security.*;
 import com.mockify.backend.security.oauth2.CustomOAuth2UserService;
 import com.mockify.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -26,14 +22,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 
-/**
- *
- * Authentication Flow:
- * 1. JWT Filter checks for Bearer token
- * 2. API Key Filter checks for X-API-Key header
- *
- * Priority: JWT > API Key
- */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -43,6 +31,7 @@ public class SecurityConfig {
     private final RateLimitFilter rateLimitFilter;
     private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
     private final ApiKeyRateLimitFilter apiKeyRateLimitFilter;
+    private final SandboxRequestInterceptor sandboxRequestInterceptor;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Bean
@@ -55,7 +44,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    CustomOAuth2UserService customOAuth2UserService,
                                                    OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler) throws Exception {
-        http
+            http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session ->
@@ -72,6 +61,15 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/mock/**").permitAll()
                         .requestMatchers("/api/endpoints/lookup/**").permitAll()
+
+
+                        // ----- Sandbox endpoints ------------------
+                        // No auth: anyone can start a sandbox or follow a verify link
+                        .requestMatchers("/api/sandbox/start").permitAll()
+                        .requestMatchers("/api/sandbox/resume").permitAll()
+                        .requestMatchers("/api/sandbox/convert/verify").permitAll()
+                        // Requires GUEST JWT: only authenticated sandbox users can initiate conversion
+                        .requestMatchers("/api/sandbox/convert").authenticated()
 
                         // Admin-only endpoints
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
@@ -119,7 +117,11 @@ public class SecurityConfig {
                 .addFilterAfter(rateLimitFilter, ApiKeyAuthenticationFilter.class)
 
                 // 4. API Key-specific rate limiting (per key quotas, stricter limits)
-                .addFilterAfter(apiKeyRateLimitFilter, RateLimitFilter.class);
+                .addFilterAfter(apiKeyRateLimitFilter, RateLimitFilter.class)
+
+                // 5. Sandbox session validation (GUEST users only)
+                // Runs last: auth + rate limiting both happen before session check
+                    .addFilterAfter(sandboxRequestInterceptor, ApiKeyRateLimitFilter.class);
 
         return http.build();
     }

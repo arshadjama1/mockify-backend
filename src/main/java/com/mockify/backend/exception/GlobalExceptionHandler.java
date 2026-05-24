@@ -14,21 +14,27 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * Handles sandbox session expiry with a machine-readable error code.
+     * Must be declared before the generic BaseException handler so Spring
+     * picks the most specific handler.
+     */
     @ExceptionHandler(SandboxExpiredException.class)
-    public ResponseEntity<Map<String, Object>> handleSandboxExpired(
+    public ResponseEntity<ErrorResponse> handleSandboxExpired(
             SandboxExpiredException ex,
             HttpServletRequest req) {
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", LocalDateTime.now());
-        body.put("status", HttpStatus.GONE.value());
-        body.put("error", "Sandbox Expired");
-        body.put("errorCode", "SANDBOX_EXPIRED");
-        body.put("message", ex.getMessage());
-        body.put("path", req.getRequestURI());
-        body.put("convertUrl", "/api/sandbox/convert");
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.GONE.value())
+                .error("Sandbox Expired")
+                .message(ex.getMessage())
+                .path(req.getRequestURI())
+                .errorCode("SANDBOX_EXPIRED")
+                .actionUrl("/api/sandbox/convert")
+                .build();
 
-        return new ResponseEntity<>(body, HttpStatus.GONE);
+        return new ResponseEntity<>(response, HttpStatus.GONE);
     }
 
     @ExceptionHandler(BaseException.class)
