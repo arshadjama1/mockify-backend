@@ -124,7 +124,7 @@ public class SecurityConfig {
                 .addFilterAfter(rateLimitFilter, ApiKeyAuthenticationFilter.class)
 
                 // 4. API Key-specific rate limiting (per key quotas, stricter limits)
-                .addFilterAfter(apiKeyRateLimitFilter, RateLimitFilter.class)
+                .addFilterAfter(apiKeyRateLimitFilter, RateLimitFilter.class);
 
         return http.build();
     }
