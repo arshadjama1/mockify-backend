@@ -46,21 +46,37 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
             Map.entry("string", () -> faker().lorem().word()),
             Map.entry("number", () -> faker().number().numberBetween(1, 1000)),
             Map.entry("boolean", () -> faker().bool().bool()),
+
+            Map.entry("email", () -> faker().internet().emailAddress()),
+
             Map.entry("date", () -> LocalDate.now().toString()),
-            Map.entry("date-time", () -> Instant.now().toString()),
+            Map.entry("datetime", () -> Instant.now().toString()),
+
             Map.entry("uuid", () -> UUID.randomUUID().toString()),
             Map.entry("url", () -> faker().internet().url()),
+
+            Map.entry("null", () -> null),
+
             Map.entry("array", () -> List.of(
                     faker().lorem().word(),
                     faker().number().randomDigit()
             )),
+
             Map.entry("object", () -> Map.of(
                     "value", faker().lorem().word()
+            )),
+
+            Map.entry("json", () -> Map.of(
+                    "key", faker().lorem().word()
             ))
     );
 
     @Override
     public Map<String, Object> generateRecord(Map<String, Object> schemaJson) {
+
+        if (schemaJson == null) {
+            throw new IllegalArgumentException("Schema cannot be null");
+        }
 
         Map<String, Object> record = new LinkedHashMap<>();
 
@@ -71,13 +87,8 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
 
             ParsedSchema parsed = parseSchema(field, schemaDef);
 
-            Supplier<Object> generator = resolveFieldGenerator(field)
-                    .orElseGet(() ->
-                            resolveTypeGenerator(
-                                    parsed.type(),
-                                    parsed.enumValues()
-                            )
-                    );
+            Supplier<Object> generator =
+                    resolveGenerator(field, parsed);
 
             record.put(field, generator.get());
         }
@@ -86,12 +97,41 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
     }
 
     /**
+     * Explicit schema type always wins.
+     * Field-name generators are only used for generic string fields.
+     */
+    private Supplier<Object> resolveGenerator(
+            String field,
+            ParsedSchema parsed
+    ) {
+
+        Supplier<Object> typeGenerator =
+                resolveTypeGenerator(
+                        parsed.type(),
+                        parsed.enumValues()
+                );
+
+        if (!"string".equals(parsed.type())) {
+            return typeGenerator;
+        }
+
+        return resolveFieldGenerator(field)
+                .orElse(typeGenerator);
+    }
+
+    /**
      * Parse schema definition safely
      */
-    private ParsedSchema parseSchema(String field, Object schemaDef) {
+    private ParsedSchema parseSchema(
+            String field,
+            Object schemaDef
+    ) {
 
         if (schemaDef instanceof String s) {
-            return new ParsedSchema(s.toLowerCase(), null);
+            return new ParsedSchema(
+                    s.toLowerCase(),
+                    null
+            );
         }
 
         if (schemaDef instanceof Map<?, ?> defMap) {
@@ -100,7 +140,8 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
 
             if (!(typeObj instanceof String typeStr)) {
                 throw new IllegalArgumentException(
-                        "Missing or invalid 'type' for field: " + field
+                        "Missing or invalid 'type' for field: "
+                                + field
                 );
             }
 
@@ -112,75 +153,88 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
                 enumValues = (List<?>) valuesObj;
             }
 
-            return new ParsedSchema(typeStr.toLowerCase(), enumValues);
+            return new ParsedSchema(
+                    typeStr.toLowerCase(),
+                    enumValues
+            );
         }
 
         throw new IllegalArgumentException(
-                "Invalid schema format for field: " + field
+                "Invalid schema format for field: "
+                        + field
         );
     }
 
     /**
-     * Try to resolve generator based on field name (fuzzy matching)
+     * Safer field-name matching.
+     * Only applied for STRING schema types.
      */
-    private Optional<Supplier<Object>> resolveFieldGenerator(String field) {
+    private Optional<Supplier<Object>> resolveFieldGenerator(
+            String field
+    ) {
 
         String f = field.toLowerCase();
 
-        if (f.contains("email"))
-            return Optional.ofNullable(fieldGenerators.get("email"));
+        switch (f) {
+            case "id":
+                return Optional.ofNullable(fieldGenerators.get("id"));
 
-        if (f.contains("username"))
-            return Optional.ofNullable(fieldGenerators.get("username"));
+            case "name":
+            case "firstname":
+            case "lastname":
+                return Optional.ofNullable(fieldGenerators.get("name"));
 
-        if (f.contains("uuid"))
-            return Optional.ofNullable(fieldGenerators.get("uuid"));
+            case "username":
+                return Optional.ofNullable(fieldGenerators.get("username"));
 
-        if (f.contains("url"))
-            return Optional.ofNullable(fieldGenerators.get("url"));
+            case "email":
+                return Optional.ofNullable(fieldGenerators.get("email"));
 
-        if (f.contains("phone"))
-            return Optional.ofNullable(fieldGenerators.get("phone"));
+            case "phone":
+                return Optional.ofNullable(fieldGenerators.get("phone"));
 
-        if (f.equals("id") || f.endsWith("id"))
-            return Optional.ofNullable(fieldGenerators.get("id"));
+            case "city":
+                return Optional.ofNullable(fieldGenerators.get("city"));
 
-        if (f.contains("name"))
-            return Optional.ofNullable(fieldGenerators.get("name"));
+            case "state":
+                return Optional.ofNullable(fieldGenerators.get("state"));
 
-        if (f.contains("city"))
-            return Optional.ofNullable(fieldGenerators.get("city"));
+            case "country":
+                return Optional.ofNullable(fieldGenerators.get("country"));
 
-        if (f.contains("state"))
-            return Optional.ofNullable(fieldGenerators.get("state"));
+            case "zipcode":
+                return Optional.ofNullable(fieldGenerators.get("zipCode"));
 
-        if (f.contains("country"))
-            return Optional.ofNullable(fieldGenerators.get("country"));
+            case "company":
+                return Optional.ofNullable(fieldGenerators.get("company"));
 
-        if (f.contains("zipcode"))
-            return Optional.ofNullable(fieldGenerators.get("zipCode"));
+            case "title":
+                return Optional.ofNullable(fieldGenerators.get("title"));
 
-        if (f.contains("company"))
-            return Optional.ofNullable(fieldGenerators.get("company"));
+            case "createdat":
+                return Optional.ofNullable(fieldGenerators.get("createdAt"));
 
-        if (f.contains("title"))
-            return Optional.ofNullable(fieldGenerators.get("title"));
+            case "updatedat":
+                return Optional.ofNullable(fieldGenerators.get("updatedAt"));
 
-        if (f.contains("createdat"))
-            return Optional.ofNullable(fieldGenerators.get("createdAt"));
+            case "uuid":
+                return Optional.ofNullable(fieldGenerators.get("uuid"));
 
-        if (f.contains("updatedat"))
-            return Optional.ofNullable(fieldGenerators.get("updatedAt"));
+            case "url":
+                return Optional.ofNullable(fieldGenerators.get("url"));
 
-        return Optional.empty();
+            default:
+                return Optional.empty();
+        }
     }
-    /**
-     * Resolve generator based on type or throw clear error
-     */
+
     /**
      * Type-based generator with ENUM support
      */
-    private Supplier<Object> resolveTypeGenerator(String type, List<?> enumValues) {
+    private Supplier<Object> resolveTypeGenerator(
+            String type,
+            List<?> enumValues
+    ) {
 
         if ("enum".equals(type)) {
 
@@ -191,11 +245,13 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
             }
 
             return () -> enumValues.get(
-                    ThreadLocalRandom.current().nextInt(enumValues.size())
+                    ThreadLocalRandom.current()
+                            .nextInt(enumValues.size())
             );
         }
 
-        Supplier<Object> generator = typeGenerators.get(type);
+        Supplier<Object> generator =
+                typeGenerators.get(type);
 
         if (generator == null) {
             throw new IllegalArgumentException(
@@ -207,7 +263,11 @@ public class MockAutoGenerateServiceImpl implements MockAutoGenerateService {
     }
 
     /**
-     * Internal record for parsed schema
+     * Internal parsed schema holder
      */
-    private record ParsedSchema(String type, List<?> enumValues) {}
+    private record ParsedSchema(
+            String type,
+            List<?> enumValues
+    ) {
+    }
 }
