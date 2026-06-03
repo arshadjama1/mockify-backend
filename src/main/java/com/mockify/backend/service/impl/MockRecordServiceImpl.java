@@ -11,6 +11,7 @@ import com.mockify.backend.model.MockRecord;
 import com.mockify.backend.model.MockSchema;
 import com.mockify.backend.repository.MockRecordRepository;
 import com.mockify.backend.repository.MockSchemaRepository;
+import com.mockify.backend.service.MockAutoGenerateService;
 import com.mockify.backend.service.MockRecordService;
 import com.mockify.backend.service.MockValidatorService;
 import lombok.RequiredArgsConstructor;
@@ -22,9 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +34,7 @@ public class MockRecordServiceImpl implements MockRecordService {
     private final MockSchemaRepository mockSchemaRepository;
     private final MockRecordMapper mockRecordMapper;
     private final MockValidatorService mockValidatorService;
+    private final MockAutoGenerateService autoGenerateService;
 
     @Override
     @Transactional
@@ -60,24 +60,54 @@ public class MockRecordServiceImpl implements MockRecordService {
     @PreAuthorize("hasPermission(#schemaId, 'SCHEMA', 'RECORD:WRITE')")
     public List<MockRecordResponse> createRecordsBulk(UUID userId, UUID schemaId, List<CreateMockRecordRequest> requests) {
         log.info("Bulk create requested by userId={} count={}", userId, requests == null ? 0 : requests.size());
+
         if (requests == null || requests.isEmpty())
             throw new BadRequestException("Records list cannot be null or empty");
 
         // @PreAuthorize already fired once for the whole batch.
-        // IMPORTANT: we call persistRecord() directly, NOT createRecord().
+        // IMPORTANT: we call persistRecordsBulk() directly, NOT createRecord().
         MockSchema schema = mockSchemaRepository.findById(schemaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Schema not found"));
 
         log.info("Bulk creating {} records in schema {} by user {}", requests.size(), schemaId, userId);
 
-        return requests.stream()
-                .map(req -> {
-                    if (req == null || req.getData() == null)
-                        throw new BadRequestException("Record data cannot be null");
-                    mockValidatorService.validateRecordAgainstSchema(schema.getSchemaJson(), req.getData());
-                    return persistRecord(schema, req);
-                })
-                .toList();
+        return persistRecordsBulk(schema, requests, true);
+    }
+
+    // Auto generate records
+    @Override
+    @Transactional
+    @PreAuthorize("hasPermission(#schemaId, 'SCHEMA', 'RECORD:WRITE')")
+    public List<MockRecordResponse> autoGenerateRecordsBulk(UUID userId, UUID schemaId, int count) {
+
+        log.info("Auto-generate requested by userId={} count={}", userId, count);
+
+        MockSchema schema = mockSchemaRepository.findById(schemaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Schema not found"));
+
+        Map<String, Object> schemaJson = schema.getSchemaJson();
+
+        // VALIDATE SCHEMA
+        mockValidatorService.validateSchemaDefinition(schemaJson);
+
+        List<CreateMockRecordRequest> requests = new ArrayList<>();
+
+        for (int i = 0; i < count; i++) {
+
+            Map<String, Object> record =
+                    autoGenerateService.generateRecord(schemaJson);
+
+            // VALIDATE GENERATED RECORD
+            mockValidatorService.validateRecordAgainstSchema(schemaJson, record);
+
+            CreateMockRecordRequest req = new CreateMockRecordRequest();
+            req.setData(record);
+            requests.add(req);
+        }
+
+        log.info("Auto-generating {} records in schema {} by user {}", count, schemaId, userId);
+
+        return persistRecordsBulk(schema, requests, false);
     }
 
     @Override
@@ -88,6 +118,7 @@ public class MockRecordServiceImpl implements MockRecordService {
 
         MockRecord record = mockRecordRepository.findById(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Record not found"));
+
         return mockRecordMapper.toResponse(record);
     }
 
@@ -101,7 +132,8 @@ public class MockRecordServiceImpl implements MockRecordService {
         // Validate Page size, protect from abuse
         PageableValidator.validate(pageable, 50);
 
-        Page<MockRecord> recordsPage = mockRecordRepository.findByMockSchema_Id(schemaId, pageable);
+        Page<MockRecord> recordsPage =
+                mockRecordRepository.findByMockSchema_Id(schemaId, pageable);
 
         log.info("User {} fetching records page={}, size={} under schema {}",
                 userId,
@@ -127,7 +159,8 @@ public class MockRecordServiceImpl implements MockRecordService {
 
         if (request.getData() != null) {
             mockValidatorService.validateRecordAgainstSchema(
-                    record.getMockSchema().getSchemaJson(), request.getData());
+                    record.getMockSchema().getSchemaJson(),
+                    request.getData());
         }
 
         mockRecordMapper.updateEntityFromRequest(request, record);
@@ -145,6 +178,7 @@ public class MockRecordServiceImpl implements MockRecordService {
 
         MockRecord record = mockRecordRepository.findById(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Record not found"));
+
         log.warn("Record {} deleted by user {}", recordId, userId);
         mockRecordRepository.delete(record);
     }
@@ -152,8 +186,11 @@ public class MockRecordServiceImpl implements MockRecordService {
     @Transactional
     void deleteExpiredRecords() {
         log.info("Deleting expired records...");
-        List<MockRecord> expired = mockRecordRepository.findByExpiresAtBefore(LocalDateTime.now());
+        List<MockRecord> expired =
+                mockRecordRepository.findByExpiresAtBefore(LocalDateTime.now());
+
         mockRecordRepository.deleteAll(expired);
+
         log.info("Expired records deleted count={}", expired.size());
     }
 
@@ -166,6 +203,38 @@ public class MockRecordServiceImpl implements MockRecordService {
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Shared bulk persistence helper.
+     *
+     * <p>Do NOT annotate this method with {@code @PreAuthorize} — callers are
+     * responsible for ensuring authorisation has already been verified.</p>
+     */
+    private List<MockRecordResponse> persistRecordsBulk(
+            MockSchema schema,
+            List<CreateMockRecordRequest> requests,
+            boolean validate
+    ) {
+
+        Map<String, Object> schemaJson = schema.getSchemaJson();
+
+        return requests.stream()
+                .map(req -> {
+
+                    if (req == null || req.getData() == null)
+                        throw new BadRequestException("Record data cannot be null");
+
+                    if (validate) {
+                        mockValidatorService.validateRecordAgainstSchema(
+                                schemaJson,
+                                req.getData()
+                        );
+                    }
+
+                    return persistRecord(schema, req);
+                })
+                .toList();
+    }
 
     /**
      * Persists a single record against an already-loaded and already-authorised

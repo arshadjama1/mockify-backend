@@ -5,6 +5,8 @@ import com.mockify.backend.service.MockValidatorService;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.*;
 
@@ -20,6 +22,7 @@ public class MockValidatorServiceImpl implements MockValidatorService {
 
     private enum ALLOWED_TYPES {
 
+
         STRING("string"),
         NUMBER("number"),
         BOOLEAN("boolean"),
@@ -27,10 +30,12 @@ public class MockValidatorServiceImpl implements MockValidatorService {
         OBJECT("object"),
         EMAIL("email"),
         UUID("uuid"),
+        DATE("date"),
         DATETIME("datetime"),
         NULL("null"),
         JSON("json"),
-        ENUM("enum");
+        ENUM("enum"),
+        URL("url");
 
         private final String value;
 
@@ -216,12 +221,39 @@ public class MockValidatorServiceImpl implements MockValidatorService {
                 }
                 break;
 
+
+            case DATE:
+                require(value instanceof String, field, "date");
+
+                try {
+                    LocalDate.parse(value.toString());
+                } catch (Exception e) {
+                    throw new BadRequestException(
+                            "Invalid date format (yyyy-MM-dd) for field '"
+                                    + field + "'"
+                    );
+                }
+                break;
+
             case DATETIME:
                 require(value instanceof String, field, "datetime");
                 try {
                     OffsetDateTime.parse(value.toString());
                 } catch (Exception e) {
                     throw new BadRequestException("Invalid datetime format (ISO-8601) for field '" + field + "'");
+                }
+                break;
+
+            case URL:
+                require(value instanceof String, field, "url");
+
+                try {
+                    new URI(value.toString());
+                } catch (Exception e) {
+                    throw new BadRequestException(
+                            "Invalid URL format for field '"
+                                    + field + "'"
+                    );
                 }
                 break;
 

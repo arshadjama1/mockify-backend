@@ -1,5 +1,6 @@
 package com.mockify.backend.controller;
 
+import com.mockify.backend.dto.request.record.AutoGenerateRequest;
 import com.mockify.backend.dto.request.record.CreateMockRecordRequest;
 import com.mockify.backend.dto.request.record.UpdateMockRecordRequest;
 import com.mockify.backend.dto.response.page.PageResponse;
@@ -26,17 +27,17 @@ import java.util.UUID;
 /**
  * Mock Record management controller.
  * <h3>AUTHORIZATION</h3>
-   * <p>All methods are open to both JWT sessions and API key callers. Authorization
-   * is enforced declaratively via {@code @PreAuthorize("hasPermission(...)")}
-   * annotations on each {@link MockRecordService} method, evaluated by
-   * {@link com.mockify.backend.security.MockifyPermissionEvaluator}.</p>
-   *
-   * <ul>
-   *   <li><b>JWT callers</b>: full access to all resources within their owned organization.</li>
-   *   <li><b>API key callers</b>: access gated by three sequential guards —
-   *       org scope → project scope → permission level
-   *       (hierarchy: ADMIN ⊇ DELETE ⊇ WRITE ⊇ READ).</li>
-   * </ul>
+ * <p>All methods are open to both JWT sessions and API key callers. Authorization
+ * is enforced declaratively via {@code @PreAuthorize("hasPermission(...)")}
+ * annotations on each {@link MockRecordService} method, evaluated by
+ * {@link com.mockify.backend.security.MockifyPermissionEvaluator}.</p>
+ *
+ * <ul>
+ *   <li><b>JWT callers</b>: full access to all resources within their owned organization.</li>
+ *   <li><b>API key callers</b>: access gated by three sequential guards —
+ *       org scope → project scope → permission level
+ *       (hierarchy: ADMIN ⊇ DELETE ⊇ WRITE ⊇ READ).</li>
+ * </ul>
  */
 @Slf4j
 @RestController
@@ -80,6 +81,25 @@ public class MockRecordController {
 
         List<MockRecordResponse> created = mockRecordService.createRecordsBulk(userId, schemaId, requests);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    // Auto-generate multiple records
+    @PostMapping("/{org}/{project}/{schema}/records/auto-bulk")
+    public ResponseEntity<List<MockRecordResponse>> autoGenerateRecordsBulk(
+            @PathVariable String org,
+            @PathVariable String project,
+            @PathVariable String schema,
+            @Valid @RequestBody AutoGenerateRequest request,
+            Authentication auth) {
+
+        UUID userId = SecurityUtils.resolveUserId(auth);
+        UUID schemaId = endpointService.resolveSchema(org, project, schema);
+        log.info("User {} auto-generating {} records under schema {}", userId, request.getCount(), schemaId);
+
+        List<MockRecordResponse> records =
+                mockRecordService.autoGenerateRecordsBulk(userId, schemaId, request.getCount());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(records);
     }
 
     // Get a record by ID
