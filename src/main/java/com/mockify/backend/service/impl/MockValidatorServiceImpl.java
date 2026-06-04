@@ -4,12 +4,10 @@ import com.mockify.backend.exception.BadRequestException;
 import com.mockify.backend.service.MockValidatorService;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.springframework.stereotype.Service;
-
 import java.net.URI;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.*;
-
 
 @Service
 public class MockValidatorServiceImpl implements MockValidatorService {
@@ -150,6 +148,19 @@ public class MockValidatorServiceImpl implements MockValidatorService {
                                         "' must define items"
                         );
                     }
+
+                    if (items instanceof String str) {
+                        parseType(field + ".items", str);
+                    } else if (items instanceof Map<?, ?> map) {
+                        validateSchemaDefinition(
+                                castToStringObjectMap(map)
+                        );
+                    } else {
+                        throw new BadRequestException(
+                                "Array field '" + field +
+                                        "' must define valid type"
+                        );
+                    }
                 }
 
                 /*
@@ -278,6 +289,92 @@ public class MockValidatorServiceImpl implements MockValidatorService {
                             field,
                             "array"
                     );
+
+                    Object itemsDef = defMap.get("items");
+
+                    if (itemsDef == null) {
+                        throw new BadRequestException(
+                                "Array field '" + field + "' must define items"
+                        );
+                    }
+
+                    List<?> list = (List<?>) value;
+
+                    for (int i = 0; i < list.size(); i++) {
+
+                        Object itemValue = list.get(i);
+                        String itemField = field + "[" + i + "]";
+
+                        /*
+                         * Array of primitive types
+                         */
+                        if (itemsDef instanceof String itemTypeStr) {
+
+                            ALLOWED_TYPES itemType =
+                                    parseType(itemField, itemTypeStr);
+
+                            validateValueByType(
+                                    itemField,
+                                    itemType,
+                                    itemValue,
+                                    null
+                            );
+
+                            continue;
+                        }
+
+                        /*
+                         * Array of objects / nested schemas
+                         */
+                        if (itemsDef instanceof Map<?, ?> itemMap) {
+
+                            require(
+                                    itemValue instanceof Map<?, ?>,
+                                    itemField,
+                                    "object"
+                            );
+
+                            Map<String, Object> itemSchema =
+                                    castToStringObjectMap(itemMap);
+
+                            Object itemType = itemSchema.get("type");
+
+                            if (itemType == null) {
+
+                                validateRecordAgainstSchema(
+                                        itemSchema,
+                                        castToStringObjectMap(
+                                                (Map<?, ?>) itemValue
+                                        )
+                                );
+
+                                continue;
+                            }
+
+                            if ("object".equalsIgnoreCase(itemType.toString()) ||
+                                    "json".equalsIgnoreCase(itemType.toString())) {
+
+                                validateRecordAgainstSchema(
+                                        extractNestedSchema(itemSchema),
+                                        castToStringObjectMap(
+                                                (Map<?, ?>) itemValue
+                                        )
+                                );
+
+                                continue;
+                            }
+
+                            throw new BadRequestException(
+                                    "Array field '" + field +
+                                            "' supports only object schemas in items"
+                            );
+                        }
+
+                        throw new BadRequestException(
+                                "Invalid items definition for array field '" +
+                                        field + "'"
+                        );
+                    }
 
                     continue;
                 }
@@ -436,7 +533,14 @@ public class MockValidatorServiceImpl implements MockValidatorService {
                 require(value instanceof String, field, "url");
 
                 try {
-                    new URI(value.toString());
+                    URI uri = new URI(value.toString());
+
+                    if (uri.getScheme() == null ||
+                            uri.getHost() == null) {
+                        throw new BadRequestException(
+                                "Invalid URL format for field '" + field + "'"
+                        );
+                    }
                 } catch (Exception e) {
                     throw new BadRequestException(
                             "Invalid URL format for field '" + field + "'"

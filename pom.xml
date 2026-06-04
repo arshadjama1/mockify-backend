@@ -162,12 +162,18 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
-		<!-- Javafaker-->
-		<dependency>
-			<groupId>com.github.javafaker</groupId>
-			<artifactId>javafaker</artifactId>
-			<version>1.0.2</version>
-		</dependency>
+        <dependency>
+            <groupId>com.github.javafaker</groupId>
+            <artifactId>javafaker</artifactId>
+            <version>1.0.2</version>
+
+            <exclusions>
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
         <!--   Swagger parser    -->
         <dependency>
             <groupId>io.swagger.parser.v3</groupId>
