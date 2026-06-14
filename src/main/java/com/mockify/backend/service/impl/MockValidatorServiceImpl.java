@@ -571,15 +571,28 @@ public class MockValidatorServiceImpl implements MockValidatorService {
             Object nestedDef
     ) {
 
-        if (!(nestedDef instanceof String) &&
-                !(nestedDef instanceof Map<?, ?>)) {
-
-            throw new BadRequestException(
-                    "Nested field '" + nestedField +
-                            "' inside '" + parentField +
-                            "' has invalid definition"
-            );
+        if (nestedDef instanceof String nestedType) {
+            parseType(parentField + "." + nestedField, nestedType);
+            return;
         }
+
+        if (nestedDef instanceof Map<?, ?> nestedMap) {
+
+            Map<String, Object> wrapped = new LinkedHashMap<>();
+            wrapped.put(
+                    nestedField,
+                    castToStringObjectMap(nestedMap)
+            );
+
+            validateSchemaDefinition(wrapped);
+            return;
+        }
+
+        throw new BadRequestException(
+                "Nested field '" + nestedField +
+                        "' inside '" + parentField +
+                        "' has invalid definition"
+        );
     }
 
 
