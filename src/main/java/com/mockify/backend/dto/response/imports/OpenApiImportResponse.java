@@ -2,6 +2,8 @@ package com.mockify.backend.dto.response.imports;
 
 import com.mockify.backend.dto.response.schema.MockSchemaResponse;
 import lombok.*;
+
+import java.util.Collections;
 import java.util.List;
 
 @Getter
@@ -17,10 +19,12 @@ public class OpenApiImportResponse {
 
     public static OpenApiImportResponse of(List<MockSchemaResponse> imported, List<SkippedSchema> skipped) {
         OpenApiImportResponse res = new OpenApiImportResponse();
-        res.imported = imported;
-        res.skipped = skipped;
-        res.totalImported = imported.size();
-        res.totalSkipped = skipped.size();
+
+        res.imported = imported == null ? Collections.emptyList() : imported;
+        res.skipped = skipped == null ? Collections.emptyList() : skipped;
+
+        res.totalImported = res.imported.size();
+        res.totalSkipped = res.skipped.size();
         return res;
     }
 }
