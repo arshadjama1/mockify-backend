@@ -92,11 +92,11 @@ public class OpenApiValidatorServiceImpl implements OpenApiValidatorService {
             throw new InvalidOpenApiException("Missing OpenAPI version");
         }
 
-        // Accept only 3.x specs
-        if (!version.startsWith("3")) {
+        // Accept OpenAPI 3.x and Swagger 2.0
+        if (!(version.startsWith("3") || "2.0".equals(version))) {
             throw new InvalidOpenApiException(
                     "Unsupported OpenAPI version: " + version +
-                            ". Only OpenAPI 3.x is supported"
+                            ". Only OpenAPI 3.x and Swagger 2.0 are supported"
             );
         }
     }
