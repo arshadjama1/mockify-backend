@@ -17,10 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import io.swagger.v3.oas.models.media.Schema;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+
+import java.util.*;
 
 /**
  * OpenApiImportService
@@ -199,10 +197,14 @@ public class OpenApiImportServiceImpl implements OpenApiImportService {
 
         String filename = file.getOriginalFilename();
 
+        // Convert the filename to lowercase before checking
+        String normalizedFilename =
+                filename == null ? null : filename.toLowerCase(Locale.ROOT);
+
         if (filename == null ||
-                (!filename.endsWith(".yaml") &&
-                        !filename.endsWith(".yml") &&
-                        !filename.endsWith(".json"))) {
+                (!normalizedFilename.endsWith(".yaml") &&
+                        !normalizedFilename.endsWith(".yml") &&
+                        !normalizedFilename.endsWith(".json"))) {
 
             throw new BadRequestException(
                     "Unsupported file type. Please upload .yaml, .yml, or .json files only."
