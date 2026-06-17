@@ -1,6 +1,7 @@
 package com.mockify.backend.controller;
 
 import com.mockify.backend.dto.response.imports.OpenApiImportResponse;
+import com.mockify.backend.exception.ResourceNotFoundException;
 import com.mockify.backend.security.SecurityUtils;
 import com.mockify.backend.service.EndpointService;
 import com.mockify.backend.service.OpenApiImportService;
@@ -18,7 +19,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.Collections;
 import java.util.UUID;
 import static org.mockito.ArgumentMatchers.*;
@@ -154,7 +154,7 @@ class OpenApiImportControllerTest {
                     "test-org",
                     "missing-project"
             )).thenThrow(
-                    new RuntimeException("Project not found")
+                    new ResourceNotFoundException("Project not found")
             );
 
             try (MockedStatic<SecurityUtils> securityMock =
@@ -171,7 +171,7 @@ class OpenApiImportControllerTest {
                                         .file(buildValidFile())
                                         .principal(auth)
                         )
-                        .andExpect(status().is5xxServerError());
+                        .andExpect(status().isNotFound());
             }
         }
     }
