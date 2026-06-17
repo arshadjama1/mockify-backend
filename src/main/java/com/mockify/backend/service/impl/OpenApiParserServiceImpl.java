@@ -140,6 +140,8 @@ public class OpenApiParserServiceImpl implements OpenApiParserService {
         } catch (IOException e) {
             log.error("Failed to read uploaded OpenAPI file", e);
             throw new InvalidOpenApiException("Failed to read OpenAPI file");
+        }catch (InvalidOpenApiException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Unexpected OpenAPI parsing failure", e);
             throw new InvalidOpenApiException("Failed to parse OpenAPI specification");
