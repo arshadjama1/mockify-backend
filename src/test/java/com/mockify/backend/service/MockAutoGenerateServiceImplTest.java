@@ -104,7 +104,7 @@ class MockAutoGenerateServiceImplTest {
                 "age", "number",
                 "active", "boolean",
                 "birthDate", "date",
-                "eventTime", "date-time",
+                "eventTime", "datetime",
                 "tags", "array",
                 "metadata", "object"
         );
